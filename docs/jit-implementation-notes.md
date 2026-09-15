@@ -51,6 +51,29 @@ code. Decide before launch.
 the live room, and deliberately absent from registration, so opt-in rate stays
 comparable between hold days and normal days.
 
+## Testing the webhooks
+
+The endpoint itself is fine. Verified directly: `OPTIONS` returns 204 with
+`access-control-allow-origin: *` and POST permitted, and a `POST` of the
+progress payload returns `200`. If nothing is arriving, it is one of these.
+
+**1. You are testing in the Artifact preview.** The Artifact sandbox blocks all
+outbound `fetch` to third-party hosts, with no visible error. The webhook can
+never fire there. Test on a real host: GitHub Pages, or the page in GHL.
+
+**2. Nothing identifies the viewer.** `pingProgress` refuses to send without a
+`contact_id` or an `email`, because an empty identifier reaching a
+Create/Update Contact action creates a blank record. Opening `live.html`
+directly gives you neither. Add `?c=TEST123` to the URL, or arrive through the
+confirmation page after registering.
+
+**3. No milestone has been reached.** `watched-start` fires on open, but the
+others need 25/50/75/95 percent of `MASTERCLASS_SECONDS` in *visible* watched
+time. A backgrounded tab accrues nothing, by design.
+
+`DEBUG_PINGS` is on in `live.html`. Open the console: every send and every
+skip is logged with the reason. Turn it off once the funnel is verified.
+
 ## Still needed
 
 - `GHL_REGISTRATION_WEBHOOK` in `registration.html`. Empty, and the form

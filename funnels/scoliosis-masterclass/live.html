@@ -292,6 +292,14 @@
      triggered by any other event on the funnel. */
   var GHL_PROGRESS_WEBHOOK = "https://services.leadconnectorhq.com/hooks/vFCObiJhlDKaU7P0ELzv/webhook-trigger/48c9302d-3b08-4f59-ba17-a00c4b3c97aa";
 
+  /* Progress pings are invisible by design. Leave this on until the funnel is
+     verified end to end: it reports every send and, more usefully, every skip
+     and the reason for it. */
+  var DEBUG_PINGS = true;
+
+  function log(tag, msg){  if (DEBUG_PINGS) console.log("[masterclass] " + tag + ": " + msg); }
+  function warn(tag, msg){ if (DEBUG_PINGS) console.warn("[masterclass] " + tag + " NOT sent: " + msg); }
+
   var BOOKING_URL = "#";
 
   /* Carry ?c=<contact id> onward so identity survives the hop to booking. */
@@ -423,8 +431,13 @@
      session with no stored attendee, so ?c=<contact id> is what identifies
      them and keeps progress pings working on a return visit. */
   function getAttendee(){
-    var a = {};
-    try { a = JSON.parse(sessionStorage.getItem(ATTENDEE_KEY) || "{}") || {}; } catch (e) {}
+    var a = {}, raw = "";
+    /* sessionStorage first, localStorage as fallback, same as the session key.
+       Someone clicking the joining link from their email is in a fresh browser
+       session where sessionStorage is already gone. */
+    try { raw = sessionStorage.getItem(ATTENDEE_KEY) || ""; } catch (e) {}
+    if (!raw) { try { raw = localStorage.getItem(ATTENDEE_KEY) || ""; } catch (e) {} }
+    try { a = JSON.parse(raw || "{}") || {}; } catch (e) {}
     var cid = new URLSearchParams(window.location.search).get("c");
     /* Ignore an unresolved merge field, e.g. ?c={{contact.id}} arriving
        literally because the email editor did not substitute it. Passing that
@@ -432,7 +445,9 @@
     if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
     if (cid){
       a.contact_id = cid;
-      try { sessionStorage.setItem(ATTENDEE_KEY, JSON.stringify(a)); } catch (e) {}
+      var j = JSON.stringify(a);
+      try { sessionStorage.setItem(ATTENDEE_KEY, j); } catch (e) {}
+      try { localStorage.setItem(ATTENDEE_KEY, j); } catch (e) {}
     }
     return a;
   }
@@ -457,11 +472,20 @@
      tag name is sent ready-made, so the GHL workflow just applies it rather
      than branching on a percentage. */
   function pingProgress(tag, pct){
-    if (!GHL_PROGRESS_WEBHOOK) return;
+    if (!GHL_PROGRESS_WEBHOOK){
+      warn(tag, "GHL_PROGRESS_WEBHOOK is empty.");
+      return;
+    }
     var attendee = getAttendee();
     /* Only send identifiers we actually have. An empty email reaching a
-       Create/Update Contact action matches nothing and creates a blank record. */
-    if (!attendee.email && !attendee.contact_id) return;
+       Create/Update Contact action matches nothing and creates a blank record.
+       This is correct for production and the reason nothing fires when you open
+       the room directly: add ?c=TEST123 to the URL to identify yourself. */
+    if (!attendee.email && !attendee.contact_id){
+      warn(tag, "no contact_id and no email, so there is nobody to attach this to. " +
+                "Reach this page from the confirmation page, or add ?c=TEST123 to the URL.");
+      return;
+    }
     var payload = {
       type: "masterclass_progress",
       tag: tag,
@@ -476,7 +500,14 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
-    }).catch(function(){});   /* best effort, never block the player */
+    }).then(function(res){
+      log(tag, res.ok ? "sent (" + res.status + ")" : "rejected (" + res.status + ")");
+    }).catch(function(e){
+      /* Blocked requests land here with no detail. The usual cause is opening
+         this page somewhere that forbids outbound requests, such as a preview
+         sandbox, rather than anything wrong with the webhook. */
+      warn(tag, "request blocked or failed: " + (e && e.message ? e.message : "no detail"));
+    });   /* best effort, never block the player */
   }
 
   function onProgress(seconds){
