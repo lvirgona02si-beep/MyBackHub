@@ -14,6 +14,8 @@ funnels/<funnel-slug>/     one folder per funnel, self-contained
 shared/                    anything used by more than one funnel
   brand/                   logos, banners, brand imagery
 docs/                      cross-funnel documentation (this folder)
+  just-in-time-webinar-logic.md   the JIT funnel build reference
+  jit-implementation-notes.md     where this build diverges from it
 ```
 
 The rule that decides where something goes: **if only one funnel uses it, it

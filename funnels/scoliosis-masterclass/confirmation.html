@@ -203,6 +203,26 @@
       <a class="btn btn--quiet" id="joinEarly" href="#" style="margin-top:22px">Go to the waiting room &rarr;</a>
     </div>
 
+    <!-- Fixed later slot: no countdown, just the booked card -->
+    <div class="stage" id="bookedStage" hidden>
+      <span class="stage-label">Your session</span>
+      <div class="when" id="bookedWhen">--</div>
+      <p class="stage-note">We have emailed you the joining link. Add it to your calendar so it does not get lost.</p>
+      <div class="cal">
+        <a id="calGoogle2" href="#" target="_blank" rel="noopener">Google Calendar</a>
+        <a id="calOutlook2" href="#" target="_blank" rel="noopener">Outlook</a>
+        <a id="calIcs2" href="#" download="mybackhub-masterclass.ics">Apple / .ics</a>
+      </div>
+    </div>
+
+    <!-- Sessions paused. Replaces every other state while SESSION_ON_HOLD. -->
+    <div class="stage" id="holdStage" hidden>
+      <span class="stage-label">Today&rsquo;s session</span>
+      <div class="join-title">Today&rsquo;s masterclass is not running</div>
+      <p class="stage-note" style="max-width:52ch; margin-inline:auto">Dr. Mike has had to postpone today&rsquo;s session. Rather than keep you waiting, we have emailed you the full written guide instead. It covers the same three secrets, and it should be in your inbox now.</p>
+      <p class="stage-note" style="margin-top:14px">We will email you as soon as the next session is scheduled.</p>
+    </div>
+
     <!-- Session open -->
     <div class="stage" id="joinStage" hidden>
       <span class="stage-label">Your session is open</span>
@@ -214,7 +234,7 @@
 </section>
 
 <!-- ====================== WELCOME VIDEO ====================== -->
-<section class="sec sec--paper">
+<section class="sec sec--paper" data-session-only>
   <div class="wrap">
     <div class="welcome">
       <p class="welcome-head">A quick word from Dr. Mike before you start</p>
@@ -230,7 +250,7 @@
 </section>
 
 <!-- ====================== CHECKLIST ====================== -->
-<section class="sec">
+<section class="sec" data-session-only>
   <div class="wrap">
     <div class="head">
       <div class="eyebrow">Before It Starts</div>
@@ -302,102 +322,180 @@
 </footer>
 
 <script>
-  /* ---------------------------------------------------------
-     Session clock. Sessions run on the hour and the half hour,
-     matching the registration page.
-     --------------------------------------------------------- */
+(function(){
+  "use strict";
+
+  /* =========================================================================
+     CONFIGURE ME
+     ========================================================================= */
   var SESSION_MINUTES = 35;
+  var LIVE_ROOM_URL   = "live.html";
 
-  /* Where the waiting room lives. Relative, so it works on any host. */
-  var LIVE_ROOM_URL = "live.html";
+  /* Take sessions down for a day without touching the ads or the registration
+     page, so opt-in rate stays comparable between hold days and normal days. */
+  var SESSION_ON_HOLD = false;
 
-  function nextSession(){
-    var d = new Date();
-    d.setSeconds(0, 0);
-    d.setMinutes(d.getMinutes() < 30 ? 30 : 60);
-    return d;
+  var SESSION_KEY  = "mbhMasterclassStart";
+  var CHOICE_KEY   = "mbhMasterclassChoice";
+  var ATTENDEE_KEY = "mbhAttendee";
+
+  var SLOT_MS     = 15 * 60 * 1000;
+  var MIN_LEAD_MS = 3 * 60 * 1000;
+
+  /* =========================================================================
+     This page owns the countdown and the calendar links. It never computes a
+     session time of its own: the registration page chose one and stored it,
+     and recomputing here is what makes a countdown jump between pages.
+     ========================================================================= */
+  function readStart(){
+    var v = 0;
+    try { v = parseInt(sessionStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {}
+    if (!v) { try { v = parseInt(localStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {} }
+    return v;
+  }
+  function readChoice(){
+    var raw = "";
+    try { raw = sessionStorage.getItem(CHOICE_KEY) || ""; } catch (e) {}
+    if (!raw) { try { raw = localStorage.getItem(CHOICE_KEY) || ""; } catch (e) {} }
+    try { return JSON.parse(raw) || {}; } catch (e) { return {}; }
+  }
+  function write(key, val){
+    try { sessionStorage.setItem(key, val); } catch (e) {}
+    try { localStorage.setItem(key, val); } catch (e) {}
   }
 
-  var target = nextSession();
-  var windowStart = new Date(target.getTime() - 30 * 60000);
-
-  /* Hand the session start to the waiting room so it continues this exact
-     countdown instead of starting a second one. Mirrored into localStorage as
-     well: someone clicking the joining link from their email arrives in a
-     fresh browser session where sessionStorage is already gone, and without
-     this they look like a brand new visitor. */
-  try { sessionStorage.setItem("mbhMasterclassStart", String(target.getTime())); } catch (e) {}
-  try { localStorage.setItem("mbhMasterclassStart", String(target.getTime())); } catch (e) {}
-
-  document.getElementById("joinEarly").href = LIVE_ROOM_URL;
-  document.getElementById("joinBtn").href   = LIVE_ROOM_URL;
-
-  var cdStage   = document.getElementById("cdStage");
-  var joinStage = document.getElementById("joinStage");
-  var cdBig     = document.getElementById("cdBig");
-  var cdFill    = document.getElementById("cdFill");
-  var title     = document.getElementById("watchTitle");
-  var sub       = document.getElementById("watchSub");
+  var cdStage     = document.getElementById("cdStage");
+  var bookedStage = document.getElementById("bookedStage");
+  var joinStage   = document.getElementById("joinStage");
+  var holdStage   = document.getElementById("holdStage");
+  var cdBig       = document.getElementById("cdBig");
+  var cdFill      = document.getElementById("cdFill");
+  var title       = document.getElementById("watchTitle");
+  var sub         = document.getElementById("watchSub");
 
   function pad(n){ return String(n).padStart(2, "0"); }
 
-  function tick(){
-    var left = Math.floor((target - new Date()) / 1000);
-
-    if (left <= 0){
-      cdStage.hidden = true;
-      joinStage.hidden = false;
-      title.innerHTML = 'Your Masterclass Is <em>Live</em>';
-      sub.textContent = "Dr. Mike is starting now. Click through and take a seat.";
-      return;
-    }
-
-    cdBig.textContent = pad(Math.floor(left / 60)) + ":" + pad(left % 60);
-    var elapsed = (new Date() - windowStart) / (target - windowStart);
-    cdFill.style.width = Math.max(0, Math.min(100, elapsed * 100)).toFixed(1) + "%";
+  /* ---- Sessions paused ---------------------------------------------------- */
+  if (SESSION_ON_HOLD){
+    [cdStage, bookedStage, joinStage].forEach(function(el){ if (el) el.hidden = true; });
+    holdStage.hidden = false;
+    document.querySelectorAll("[data-session-only]").forEach(function(el){ el.hidden = true; });
+    title.innerHTML = "Your Seat Is <em>Held</em>";
+    sub.textContent = "Today's session has been postponed. Everything you need is in your inbox.";
+    return;
   }
-  tick();
-  setInterval(tick, 1000);
 
-  /* ---- Calendar links, built from the session time ---- */
+  /* ---- Which session, and is it soon? ------------------------------------- */
+  var now    = Date.now();
+  var target = readStart();
+  var choice = readChoice();
+
+  /* Nothing stored means the browser lost the booking, not that no booking was
+     made. Open the room now rather than restarting a wait they already sat
+     through. */
+  if (!target) target = now;
+
+  var isJit = choice.jit !== false && (target - now) <= (SLOT_MS + MIN_LEAD_MS);
+  var ends  = new Date(target + SESSION_MINUTES * 60000);
+
+  /* Carry ?c=<contact id> through, so identity survives the hop to the room. */
+  var cid = new URLSearchParams(window.location.search).get("c");
+  if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
+  var liveUrl = LIVE_ROOM_URL + (cid ? (LIVE_ROOM_URL.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid) : "");
+
+  document.getElementById("joinEarly").href = liveUrl;
+  document.getElementById("joinBtn").href   = liveUrl;
+
+  /* ---- Calendar links ----------------------------------------------------- */
   function stamp(d){
     return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + "T" +
            pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + "00Z";
   }
-  var ends   = new Date(target.getTime() + SESSION_MINUTES * 60000);
   var evTitle = "Scoliosis Masterclass with Dr. Michael Gardner, MD";
   var evBody  = "The 3 secrets to getting out of scoliosis pain, without surgery. Your joining link is in your inbox.";
-
-  document.getElementById("calGoogle").href =
-    "https://calendar.google.com/calendar/render?action=TEMPLATE" +
-    "&text=" + encodeURIComponent(evTitle) +
-    "&dates=" + stamp(target) + "/" + stamp(ends) +
-    "&details=" + encodeURIComponent(evBody);
-
-  document.getElementById("calOutlook").href =
-    "https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent" +
-    "&subject=" + encodeURIComponent(evTitle) +
-    "&startdt=" + target.toISOString() +
-    "&enddt=" + ends.toISOString() +
-    "&body=" + encodeURIComponent(evBody);
+  var start   = new Date(target);
 
   var ics = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MyBackHub//Masterclass//EN",
     "BEGIN:VEVENT",
-    "UID:" + Date.now() + "@mybackhub.com",
+    "UID:" + target + "@mybackhub.com",
     "DTSTAMP:" + stamp(new Date()),
-    "DTSTART:" + stamp(target),
+    "DTSTART:" + stamp(start),
     "DTEND:" + stamp(ends),
     "SUMMARY:" + evTitle,
     "DESCRIPTION:" + evBody,
     "END:VEVENT", "END:VCALENDAR"
   ].join("\r\n");
-  var icsLink = document.getElementById("calIcs");
-  icsLink.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
 
-  /* ---- Welcome video ---- */
-  document.getElementById("playBtn").addEventListener("click", function(){
-    var btn = this;
+  ["", "2"].forEach(function(suffix){
+    var g = document.getElementById("calGoogle" + suffix);
+    var o = document.getElementById("calOutlook" + suffix);
+    var i = document.getElementById("calIcs" + suffix);
+    if (g) g.href = "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+      "&text=" + encodeURIComponent(evTitle) +
+      "&dates=" + stamp(start) + "/" + stamp(ends) +
+      "&details=" + encodeURIComponent(evBody);
+    if (o) o.href = "https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent" +
+      "&subject=" + encodeURIComponent(evTitle) +
+      "&startdt=" + start.toISOString() +
+      "&enddt=" + ends.toISOString() +
+      "&body=" + encodeURIComponent(evBody);
+    if (i){
+      i.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+      /* In the Artifact viewer a plain download link is inert, so route the
+         save through the downloads capability when it is available. Outside
+         the viewer the href above handles it and this resolves to null. */
+      if (window.claude && window.claude.use){
+        window.claude.use("downloads").then(function(downloads){
+          if (!downloads) return;
+          i.addEventListener("click", function(e){
+            e.preventDefault();
+            downloads.save({ filename: "mybackhub-masterclass.ics", data: ics }).catch(function(){});
+          });
+        }).catch(function(){});
+      }
+    }
+  });
+
+  /* ---- Fixed later slot: no countdown, just the booked card --------------- */
+  if (!isJit){
+    cdStage.hidden = true;
+    bookedStage.hidden = false;
+    document.getElementById("bookedWhen").textContent =
+      start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " today";
+    title.innerHTML = 'Your Seat Is <em>Booked</em>';
+    sub.textContent = "We have emailed your joining link. Come back to this page, or use the link, a few minutes before your session.";
+    return;
+  }
+
+  /* ---- Just-in-time: count down, then hand over --------------------------- */
+  var windowStart = target - SLOT_MS;
+
+  function tick(){
+    var left = Math.floor((target - Date.now()) / 1000);
+    if (left <= 0){
+      cdStage.hidden = true;
+      joinStage.hidden = false;
+      title.innerHTML = 'Your Masterclass Is <em>Live</em>';
+      sub.textContent = "Dr. Mike is starting now. Click through and take a seat.";
+      clearInterval(timer);
+      return;
+    }
+    cdBig.textContent = pad(Math.floor(left / 60)) + ":" + pad(left % 60);
+    var elapsed = (Date.now() - windowStart) / (target - windowStart);
+    cdFill.style.width = Math.max(0, Math.min(100, elapsed * 100)).toFixed(1) + "%";
+  }
+  var timer = setInterval(tick, 1000);
+  tick();
+})();
+
+/* The welcome video lives in its own scope: the block above returns early in
+   the booked and on-hold states, which would otherwise leave this unbound. */
+(function(){
+  "use strict";
+  var btn = document.getElementById("playBtn");
+  if (!btn) return;
+  btn.addEventListener("click", function(){
     var stage = document.getElementById("player");
     var v = document.createElement("video");
     v.src = btn.dataset.src;
@@ -408,6 +506,7 @@
     v.setAttribute("controlslist", "nodownload");
     stage.innerHTML = "";
     stage.appendChild(v);
-    v.play().catch(function(){ /* autoplay blocked, the controls are there */ });
+    v.play().catch(function(){});
   });
+})();
 </script>

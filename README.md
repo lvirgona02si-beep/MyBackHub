@@ -24,7 +24,7 @@ Read [docs/conventions.md](docs/conventions.md) before adding anything.
 
 | Funnel | Pages | Status |
 |---|---|---|
-| [Scoliosis Masterclass](funnels/scoliosis-masterclass/) | Registration, confirmation | Built, not yet wired to the CRM |
+| [Scoliosis Masterclass](funnels/scoliosis-masterclass/) | Registration, confirmation, live room | Built. Progress webhook live; registration webhook still needed |
 
 ## Docs
 
@@ -33,6 +33,8 @@ Read [docs/conventions.md](docs/conventions.md) before adding anything.
 | [Conventions](docs/conventions.md) | Where files go and how they are named |
 | [Brand tokens](docs/brand-tokens.md) | Palette, type, and house copy style |
 | [Source funnels](docs/source-funnels.md) | Pages being replaced, and the structural reference |
+| [JIT webinar logic](docs/just-in-time-webinar-logic.md) | How the just-in-time funnel works, end to end |
+| [JIT implementation notes](docs/jit-implementation-notes.md) | Where this build diverges, and what is still needed |
 
 ## Working on the pages
 

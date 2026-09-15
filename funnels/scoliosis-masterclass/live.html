@@ -294,8 +294,22 @@
 
   var BOOKING_URL = "#";
 
-  /* Sessions run on the hour and the half hour, matching the other pages. */
-  var SLOT_MS = 30 * 60 * 1000;
+  /* Carry ?c=<contact id> onward so identity survives the hop to booking. */
+  function withContact(url){
+    var cid = new URLSearchParams(window.location.search).get("c");
+    if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
+    if (!cid || url === "#") return url;
+    return url + (url.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid);
+  }
+
+  /* Must match the registration page, which is what chose the slot. */
+  var SLOT_MS     = 15 * 60 * 1000;
+  var MIN_LEAD_MS = 3 * 60 * 1000;
+
+  /* Take sessions down for a day without touching the ads or the registration
+     page. Mirrors the same flag on the confirmation page. */
+  var SESSION_ON_HOLD = false;
+  var CONFIRMATION_URL = "confirmation.html";
 
   /* How late someone can arrive and still be dropped into a session already in
      progress, the way they would be on a real live call. Past this they have
@@ -319,8 +333,8 @@
     { at: 60,   from: "MyBackHub Team", text: "PLACEHOLDER: time this to where Dr. Mike explains why straight-spine therapy fails a curved spine." },
     { at: 420,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the first secret." },
     { at: 900,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the rotation explanation, the part most people have never had described to them." },
-    { at: 1320, from: "MyBackHub Team", text: "If you want to go through your own curve with someone, our specialists have a few times open this week.", link: { href: BOOKING_URL, label: "Book your call" } },
-    { at: 1680, from: "MyBackHub Team", text: "Link again while it is fresh. Nothing is for sale on the call.", link: { href: BOOKING_URL, label: "Book your call" } }
+    { at: 1320, from: "MyBackHub Team", text: "If you want to go through your own curve with someone, our specialists have a few times open this week.", link: { href: withContact(BOOKING_URL), label: "Book your call" } },
+    { at: 1680, from: "MyBackHub Team", text: "Link again while it is fresh. Nothing is for sale on the call.", link: { href: withContact(BOOKING_URL), label: "Book your call" } }
   ];
 
   /* =========================================================================
@@ -344,6 +358,10 @@
   var soundBar  = document.getElementById("soundBar");
 
   if (!cdStage || !liveGrid) return;
+
+  /* No session is running, so anyone who still has this URL is sent back to the
+     holding page rather than landing in an empty room. */
+  if (SESSION_ON_HOLD){ window.location.replace(CONFIRMATION_URL); return; }
 
   /* The booked start is mirrored into localStorage as well as sessionStorage.
      Someone clicking the confirmation email arrives in a fresh browser session
@@ -462,7 +480,7 @@
   }
 
   function onProgress(seconds){
-    watched = seconds;
+    watched = seconds;   /* caller passes the new running total */
     releaseDueMessages(watched);
     for (var i = 0; i < MARKS.length; i++){
       var m = MARKS[i];
@@ -496,7 +514,21 @@
     video.addEventListener("loadedmetadata", function(){
       if (startAt > 0 && startAt < video.duration) video.currentTime = startAt;
     });
-    video.addEventListener("timeupdate", function(){ onProgress(video.currentTime); });
+    /* Accumulate only the time the tab is actually in view. currentTime keeps
+       advancing in a backgrounded tab, so without this someone who opens the
+       room and walks away gets tagged as having watched to the end, and the
+       one signal separating a buyer from a browser is worthless. */
+    var lastSeen = null;
+    video.addEventListener("timeupdate", function(){
+      var t = video.currentTime;
+      if (document.visibilityState === "visible" && lastSeen !== null && t > lastSeen){
+        onProgress(watched + (t - lastSeen));
+      }
+      lastSeen = t;
+    });
+    document.addEventListener("visibilitychange", function(){
+      if (document.visibilityState !== "visible") lastSeen = null;
+    });
     stage.insertBefore(video, soundBar);
     video.play().catch(function(){
       /* Even muted autoplay can be refused. Show controls so it is still
@@ -533,6 +565,14 @@
       ? "You have joined a session already in progress. Tap the button on the video for sound."
       : "Your session is running. Tap the button on the video for sound.";
 
+    /* Seed the counter so the chat backlog is already there, the same way it
+       would be joining a live call late. Marks the offset skipped past are
+       recorded as fired but never sent: they reached that point of the video,
+       they did not watch it, and tagging them would poison the signal. */
+    watched = offsetSec;
+    for (var i = 0; i < MARKS.length; i++){
+      if (MASTERCLASS_SECONDS * MARKS[i].at <= offsetSec) firedMarks[MARKS[i].ev] = true;
+    }
     fireMeta("MasterclassStart");
     pingProgress("watched-start", 0);
     releaseDueMessages(offsetSec);
@@ -549,7 +589,7 @@
   var now = Date.now();
   var target = readStart();
 
-  if (target - now > SLOT_MS) target = 0;
+  if (target - now > SLOT_MS + MIN_LEAD_MS) target = 0;   /* stale future, discard */
   if (!target || now - target > LATE_JOIN_MAX_MS){
     target = now;
     rememberStart(target);

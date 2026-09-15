@@ -131,6 +131,7 @@
   .btn--wide{width:auto; display:inline-block; padding-inline:44px}
   :focus-visible{outline:3px solid var(--teal-lt); outline-offset:3px}
 
+  .runs{text-align:center; font-size:13px; color:var(--muted); margin:-12px 0 18px}
   .safe{margin-top:13px; text-align:center; font-size:13.5px; color:var(--muted)}
   .nopitch{margin-top:9px; text-align:center; font-family:var(--f-display); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--teal-dk)}
   .err{display:none; margin-top:12px; background:#FFF3F2; border:1px solid #FFD3CE; color:var(--coral-dk); border-radius:var(--r); padding:10px 12px; font-size:14.5px}
@@ -320,11 +321,16 @@
           <p class="card__intro">Enter your details and the masterclass room opens on the next page. You&rsquo;ll see the three secrets demonstrated on real spines, then live Q&amp;A.</p>
 
           <div class="clock">
-            <span class="lab">Next session starts in</span>
+            <span class="lab" id="cdLab">Next session starts in</span>
             <span class="val" id="cd1">--:--</span>
           </div>
+          <p class="runs">Sessions run throughout the day</p>
 
           <form id="regForm" novalidate>
+            <div class="field">
+              <label for="session">Choose Your Session</label>
+              <select id="session" name="session" required></select>
+            </div>
             <div class="row2">
               <div class="field">
                 <label for="fname">First Name</label>
@@ -634,7 +640,7 @@
     <p class="disclaim">
       <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly; nothing here should be taken as a promise of a particular outcome. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function. Statements on this page have not been evaluated by the FDA.
     </p>
-    <p class="buildnote"><b>Build note (remove before launch):</b> the registration form is front-end only. Wire the submit handler in <code>#regForm</code> to your LeadConnector/GHL endpoint and repoint the success state at the real session room. Countdown rolls to the next :00 or :30; set it to your true session cadence. Testimonial videos and posters stream from your own filesafe CDN (720p transcodes). The Privacy/Terms/Contact links are placeholders.</p>
+    <p class="buildnote"><b>Build note (remove before launch):</b> the registration form is front-end only. Wire the submit handler in <code>#regForm</code> to your LeadConnector/GHL endpoint and repoint the success state at the real session room. Countdown rolls to the next :00 or :30; set it to your true session cadence. Testimonial videos are the 854&times;480 CDN transcodes pulled from your pre-call FAQ page. In GoHighLevel, point them at your own media URLs instead. The Privacy/Terms/Contact links are placeholders.</p>
   </div>
 </footer>
 
@@ -648,51 +654,298 @@
 </div>
 
 <script>
-  /* ---- Countdown to the next :00 / :30 session ---- */
-  var outs = ["cd1","cd3","cd4"].map(function(id){ return document.getElementById(id); });
-  var btnSub = document.getElementById("cd2");
+(function(){
+  "use strict";
+
+  /* =========================================================================
+     CONFIGURE ME
+     See docs/just-in-time-webinar-logic.md for why each of these matters.
+     ========================================================================= */
+
+  /* Real session length. Everything keys off this, including the minimum gap
+     between two sessions we are willing to offer at the same time. */
+  var MASTERCLASS_SECONDS = 35 * 60;
+
+  /* The soonest session rounds up to this boundary. Fine-grained on purpose:
+     it is sold as "starting shortly", not as a published time. */
+  var SLOT_MS     = 15 * 60 * 1000;
+
+  /* Never offer a session someone cannot physically fill the form for. */
+  var MIN_LEAD_MS = 3 * 60 * 1000;
+
+  /* Later slots, as offsets from now. All are comfortably longer than the
+     session itself, so two offered times never overlap. */
+  var OFFSETS_MS  = [60 * 60000, 3 * 3600000, 6 * 3600000];
+  var CUTOFF_HOUR = 21;          /* nothing scheduled past 9pm local */
+
+  /* NEEDED: your GHL inbound webhook for registrations. While this is empty
+     the form validates and stores locally but sends nothing, and it will not
+     redirect, because a registrant with no CRM record is invisible. */
+  var GHL_REGISTRATION_WEBHOOK = "";
+
+  var CONFIRMATION_URL = "confirmation.html";
+  var MARKET = "United States";   /* confirm before launch */
+
+  /* Prefixed, so a second funnel on the same domain cannot collide with it. */
+  var SESSION_KEY  = "mbhMasterclassStart";
+  var CHOICE_KEY   = "mbhMasterclassChoice";
+  var ATTENDEE_KEY = "mbhAttendee";
+
+  /* =========================================================================
+     Storage. Every access is wrapped: private windows and blocked site data
+     make these accessors throw rather than return null, and one unguarded
+     read takes the whole page down.
+     ========================================================================= */
+  function readStart(){
+    var v = 0;
+    try { v = parseInt(sessionStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {}
+    if (!v) { try { v = parseInt(localStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {} }
+    return v;
+  }
+  function write(key, val){
+    try { sessionStorage.setItem(key, val); } catch (e) {}
+    try { localStorage.setItem(key, val); } catch (e) {}
+  }
+  function rememberStart(t){ write(SESSION_KEY, String(t)); }
+
+  /* =========================================================================
+     Scheduling
+     ========================================================================= */
+
+  /* Rounding the current time up to the next slot boundary is the whole trick:
+     it yields a real clock time rather than "in 4 minutes 38 seconds". The
+     stored value wins unless it is in the past or implausibly far ahead, which
+     is what keeps the countdown from jumping between pages. */
+  function soonestStart(){
+    var now = Date.now();
+    var target = readStart();
+    if (!target || target <= now || target - now > SLOT_MS + MIN_LEAD_MS){
+      target = Math.ceil(now / SLOT_MS) * SLOT_MS;
+      if (target - now < MIN_LEAD_MS) target += SLOT_MS;
+      rememberStart(target);
+    }
+    return target;
+  }
+
+  /* Later slots land on :00 or :30. Published timetables do not run at quarter
+     past, and quarter-hour starts are the tell that the times were generated
+     from the visitor's own clock. */
+  function roundUpTo30(d){
+    var r = new Date(d);
+    r.setSeconds(0, 0);
+    var m = r.getMinutes();
+    r.setMinutes(m + ((30 - (m % 30)) % 30));
+    return r;
+  }
+
+  function laterSlots(soonest){
+    var now = new Date(), out = [], seen = {};
+    seen[soonest] = true;
+    for (var i = 0; i < OFFSETS_MS.length; i++){
+      var d = roundUpTo30(new Date(now.getTime() + OFFSETS_MS[i]));
+      var t = d.getTime();
+      if (d.getDate() !== now.getDate()) continue;                    /* same day only */
+      if (d.getHours() >= CUTOFF_HOUR) continue;
+      if (t - soonest < MASTERCLASS_SECONDS * 1000) continue;         /* no overlap */
+      if (seen[t]) continue;
+      seen[t] = true;
+      out.push(t);
+    }
+    return out;
+  }
+
+  function clockTime(t){
+    return new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  /* =========================================================================
+     Session picker
+     ========================================================================= */
+  var soonest  = soonestStart();
+  var selected = soonest;
+  var isJit    = true;
+
+  var sel = document.getElementById("session");
+  var optJit = document.createElement("option");
+  optJit.value = "jit";
+  optJit.textContent = "Starting shortly (" + clockTime(soonest) + ")";
+  sel.appendChild(optJit);
+
+  laterSlots(soonest).forEach(function(t){
+    var o = document.createElement("option");
+    o.value = String(t);
+    o.textContent = clockTime(t) + " today";
+    sel.appendChild(o);
+  });
+
+  function saveChoice(){
+    write(CHOICE_KEY, JSON.stringify({ jit: isJit, at: selected }));
+    rememberStart(selected);
+  }
+
+  sel.addEventListener("change", function(){
+    if (sel.value === "jit"){ isJit = true;  selected = soonestStart(); }
+    else                    { isJit = false; selected = parseInt(sel.value, 10); }
+    saveChoice();
+    tick();
+  });
+  saveChoice();
+
+  /* =========================================================================
+     Clocks. cd1 and cd2 follow the chosen session; cd3 and cd4 sit further
+     down the page and always advertise the soonest one.
+     ========================================================================= */
+  var cd1 = document.getElementById("cd1");
+  var cd2 = document.getElementById("cd2");
+  var cdLab = document.getElementById("cdLab");
+  var pageClocks = ["cd3","cd4"].map(function(id){ return document.getElementById(id); });
+
+  function pad(n){ return String(n).padStart(2, "0"); }
+  function countdown(ms){
+    var total = Math.max(0, Math.round(ms / 1000));
+    return pad(Math.floor(total / 60)) + ":" + pad(total % 60);
+  }
+
   function tick(){
-    var now = new Date();
-    var mins = now.getMinutes(), secs = now.getSeconds();
-    var left = ((mins < 30 ? 30 : 60) - mins) * 60 - secs;
-    var m = String(Math.floor(left / 60)).padStart(2, "0");
-    var s = String(left % 60).padStart(2, "0");
-    var v = m + ":" + s;
-    outs.forEach(function(el){ if (el) el.textContent = v; });
-    if (btnSub) btnSub.textContent = "Next session in " + v;
+    var now = Date.now();
+
+    /* A mm:ss countdown to something six hours away is absurd, so past an hour
+       the card shows the time instead. */
+    var left = selected - now;
+    if (isJit || left < 60 * 60000){
+      if (cdLab) cdLab.textContent = "Next session starts in";
+      var v = countdown(left);
+      if (cd1) cd1.textContent = v;
+      if (cd2) cd2.textContent = "Next session in " + v;
+    } else {
+      if (cdLab) cdLab.textContent = "Your session";
+      if (cd1) cd1.textContent = clockTime(selected);
+      if (cd2) cd2.textContent = "Session at " + clockTime(selected);
+    }
+
+    var sv = countdown(soonest - now);
+    pageClocks.forEach(function(el){ if (el) el.textContent = sv; });
+
+    /* The just-in-time slot rolls forward once it passes. */
+    if (isJit && selected <= now){
+      soonest = selected = soonestStart();
+      optJit.textContent = "Starting shortly (" + clockTime(soonest) + ")";
+      saveChoice();
+    }
   }
   tick();
   setInterval(tick, 1000);
 
-  /* ---- Registration ---- */
-  var form = document.getElementById("regForm");
-  var err = document.getElementById("err");
+  /* =========================================================================
+     Meta match signals
+     ========================================================================= */
+  function getCookie(n){
+    var m = document.cookie.match("(^|;)\\s*" + n + "\\s*=\\s*([^;]+)");
+    return m ? m.pop() : "";
+  }
+  /* _fbc is only written by Meta's script once it has seen fbclid, and on a
+     first pageview it often has not been. Synthesising it from the fbclid in
+     the URL, in Meta's documented format, keeps attribution on exactly the
+     traffic you paid for. */
+  var fbclid = new URLSearchParams(window.location.search).get("fbclid") || "";
+  var fbc = getCookie("_fbc");
+  if (!fbc && fbclid) fbc = "fb.1." + Date.now() + "." + fbclid;
+  var fbp = getCookie("_fbp");
+
+  function eventId(){
+    return "mbh-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
+  }
+
+  /* =========================================================================
+     Submit
+     ========================================================================= */
+  var form   = document.getElementById("regForm");
+  var err    = document.getElementById("err");
+  var submit = form.querySelector('button[type="submit"]');
+
+  function fail(msg){
+    err.textContent = msg;
+    err.style.display = "block";
+    submit.disabled = false;
+  }
+
   form.addEventListener("submit", function(e){
     e.preventDefault();
+
     var missing = [];
     [["fname","first name"],["lname","last name"],["email","email address"],["phone","mobile number"]]
       .forEach(function(f){ if (!document.getElementById(f[0]).value.trim()) missing.push(f[1]); });
     if (!document.getElementById("consent").checked) missing.push("your agreement to be contacted");
 
     if (missing.length){
-      err.textContent = "Please add " + (missing.length > 1
+      fail("Please add " + (missing.length > 1
         ? missing.slice(0, -1).join(", ") + " and " + missing[missing.length - 1]
-        : missing[0]) + " so we can hold your seat.";
-      err.style.display = "block";
+        : missing[0]) + " so we can hold your seat.");
       return;
     }
+
     err.style.display = "none";
-    /* TODO: POST to the LeadConnector/GHL endpoint, then redirect to the session room. */
-    document.getElementById("formWrap").hidden = true;
-    document.getElementById("doneWrap").hidden = false;
-    document.getElementById("doneWrap").scrollIntoView({ block: "center", behavior: "smooth" });
+    submit.disabled = true;
+
+    var attendee = {
+      first_name: document.getElementById("fname").value.trim(),
+      last_name:  document.getElementById("lname").value.trim(),
+      email:      document.getElementById("email").value.trim(),
+      phone:      document.getElementById("phone").value.trim()
+    };
+    write(ATTENDEE_KEY, JSON.stringify(attendee));
+    saveChoice();
+
+    var payload = {
+      type: "masterclass_registration",
+      first_name: attendee.first_name,
+      last_name:  attendee.last_name,
+      email:      attendee.email,
+      phone:      attendee.phone,
+      session_time_iso: new Date(selected).toISOString(),
+      session_is_just_in_time: isJit,
+      market: MARKET,
+      funnel_type: "Masterclass",
+      event_id: eventId(),
+      fbclid: fbclid,
+      fbp: fbp,
+      fbc: fbc,
+      user_agent: navigator.userAgent
+    };
+
+    /* Deliberately no browser-side Lead event. It fires server-side from the
+       CRM Conversions API instead; firing both double-counts in Ads Manager
+       and corrupts the cost-per-lead you optimise against. */
+
+    if (!GHL_REGISTRATION_WEBHOOK){
+      fail("Registration is not connected yet. Set GHL_REGISTRATION_WEBHOOK in this page.");
+      return;
+    }
+
+    fetch(GHL_REGISTRATION_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).then(function(res){
+      if (!res.ok) throw new Error("bad status " + res.status);
+      /* Only now is it safe to move on. Redirecting on a failed webhook leaves
+         a registrant with no CRM record: no reminder, no follow-up, and no way
+         to find out it happened. */
+      document.getElementById("formWrap").hidden = true;
+      document.getElementById("doneWrap").hidden = false;
+      document.getElementById("doneWrap").scrollIntoView({ block: "center", behavior: "smooth" });
+      setTimeout(function(){ window.location.href = CONFIRMATION_URL; }, 1800);
+    }).catch(function(){
+      fail("Something went wrong reserving your seat. Please try again in a moment.");
+    });
   });
 
-  /* ---- Video testimonials: click the poster to play in place ---- */
+  /* =========================================================================
+     Video testimonials
+     ========================================================================= */
   document.querySelectorAll(".vplay").forEach(function(btn){
     btn.addEventListener("click", function(){
       var stage = btn.closest(".vstage");
-      /* stop any other testimonial that is already playing */
       document.querySelectorAll(".vstage video").forEach(function(v){ v.pause(); });
       var v = document.createElement("video");
       v.src = btn.dataset.src;
@@ -707,7 +960,7 @@
     });
   });
 
-  /* ---- Anchor CTAs focus the first field ---- */
+  /* Anchor CTAs focus the first field */
   document.querySelectorAll('a[href="#regForm"]').forEach(function(a){
     a.addEventListener("click", function(e){
       e.preventDefault();
@@ -716,4 +969,5 @@
       setTimeout(function(){ try { f.focus({ preventScroll: true }); } catch (_) {} }, 420);
     });
   });
+})();
 </script>
