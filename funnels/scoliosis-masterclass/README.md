@@ -63,7 +63,12 @@ At the top of the script in `live.html`:
 | Constant | Currently | Set to |
 |---|---|---|
 | `MASTERCLASS_SRC` | Dr. Mike's welcome video, as a testable stand-in | The real masterclass recording |
-| `MASTERCLASS_SECONDS` | `99`, the stand-in's length | `35 * 60` |
+| `MASTERCLASS_SECONDS` | `99`, the stand-in's length | The real runtime in seconds |
+
+The recording is still being produced. When it lands, follow
+[SWAP-IN-REAL-VIDEO.md](SWAP-IN-REAL-VIDEO.md): two constants change, the
+progress marks and late-join cap recalculate themselves, and `HOST_MESSAGES`
+needs retiming against the actual recording.
 | `GHL_PROGRESS_WEBHOOK` | Set | Done |
 
 ### Progress payload
