@@ -32,6 +32,11 @@ Duplex marks its numeric claims with an asterisk and a disclaimer. Nothing on
 the scoliosis build carries an asterisked claim, because every figure used
 (25,000+, 35 minutes, free) is one MyBackHub already publishes.
 
+The eyebrow follows the original's "under fire" framing at the client's
+direction. Unlike the figures above, that one is a characterisation rather than
+a published fact, and it names a real physician and a real institution. If it is
+ever challenged, it is the line on this page that would need substantiating.
+
 ## Structural reference
 
 | Page | URL |
