@@ -678,10 +678,13 @@
   var OFFSETS_MS  = [60 * 60000, 3 * 3600000, 6 * 3600000];
   var CUTOFF_HOUR = 21;          /* nothing scheduled past 9pm local */
 
-  /* NEEDED: your GHL inbound webhook for registrations. While this is empty
-     the form validates and stores locally but sends nothing, and it will not
-     redirect, because a registrant with no CRM record is invisible. */
-  var GHL_REGISTRATION_WEBHOOK = "";
+  /* MyBackHub inbound webhook for registrations. Separate from the progress
+     hook, so each GHL workflow receives only the payload it handles. */
+  var GHL_REGISTRATION_WEBHOOK = "https://services.leadconnectorhq.com/hooks/vFCObiJhlDKaU7P0ELzv/webhook-trigger/ed1e3dd3-88ee-4e5b-85c5-d21531fe5992";
+
+  /* Reports the payload and the outcome to the console. Leave on until the
+     funnel is verified end to end. */
+  var DEBUG_REGISTRATION = true;
 
   var CONFIRMATION_URL = "confirmation.html";
   var MARKET = "United States";   /* confirm before launch */
@@ -783,6 +786,11 @@
     rememberStart(selected);
   }
 
+  function selectedLabel(){
+    var o = sel.options[sel.selectedIndex];
+    return o ? o.textContent : "";
+  }
+
   sel.addEventListener("change", function(){
     if (sel.value === "jit"){ isJit = true;  selected = soonestStart(); }
     else                    { isJit = false; selected = parseInt(sel.value, 10); }
@@ -848,10 +856,19 @@
      the URL, in Meta's documented format, keeps attribution on exactly the
      traffic you paid for. */
   var fbclid = new URLSearchParams(window.location.search).get("fbclid") || "";
-  var fbc = getCookie("_fbc");
+  var fbc = getCookie("_fbc") || "";
   if (!fbc && fbclid) fbc = "fb.1." + Date.now() + "." + fbclid;
-  var fbp = getCookie("_fbp");
+  var fbp = getCookie("_fbp") || "";
 
+  /* fbc, fbp and fbclid stay empty strings until the Meta pixel is on this
+     page and has been through an ad click. They are sent either way, so the
+     CRM field mapping can be built now and starts populating the moment the
+     pixel goes live, with no change here. */
+
+  /* Deduplication key between the browser pixel and the Conversions API. Only
+     the CRM fires Lead today, but it must carry this id: the moment a
+     browser-side event is added, the same id on both is what stops Ads Manager
+     counting the lead twice. */
   function eventId(){
     return "mbh-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
@@ -896,37 +913,56 @@
     write(ATTENDEE_KEY, JSON.stringify(attendee));
     saveChoice();
 
+    var when = new Date(selected);
+    var tz = "";
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+
     var payload = {
       type: "masterclass_registration",
+
       first_name: attendee.first_name,
       last_name:  attendee.last_name,
       email:      attendee.email,
       phone:      attendee.phone,
-      session_time_iso: new Date(selected).toISOString(),
+
+      /* The session they picked. session_time_iso is the machine value; the
+         local pair is what reminder emails should merge, because a visitor who
+         booked "2:45 PM" needs to be reminded of 2:45 PM in their own zone,
+         not yours. */
+      session_time_iso: when.toISOString(),
+      session_time_local: when.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      session_date_local: when.toLocaleDateString([], { weekday: "short", day: "numeric", month: "short", year: "numeric" }),
+      session_choice: selectedLabel(),
       session_is_just_in_time: isJit,
+      timezone: tz,
+      timezone_offset_minutes: -when.getTimezoneOffset(),
+
       market: MARKET,
       funnel_type: "Masterclass",
+
+      /* Meta match signals. Empty strings until the pixel is live. */
       event_id: eventId(),
       fbclid: fbclid,
       fbp: fbp,
       fbc: fbc,
+
+      page_url: window.location.href,
+      referrer: document.referrer || "",
       user_agent: navigator.userAgent
     };
+
+    if (DEBUG_REGISTRATION) console.log("[masterclass] registration payload", payload);
 
     /* Deliberately no browser-side Lead event. It fires server-side from the
        CRM Conversions API instead; firing both double-counts in Ads Manager
        and corrupts the cost-per-lead you optimise against. */
-
-    if (!GHL_REGISTRATION_WEBHOOK){
-      fail("Registration is not connected yet. Set GHL_REGISTRATION_WEBHOOK in this page.");
-      return;
-    }
 
     fetch(GHL_REGISTRATION_WEBHOOK, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     }).then(function(res){
+      if (DEBUG_REGISTRATION) console.log("[masterclass] registration webhook responded " + res.status);
       if (!res.ok) throw new Error("bad status " + res.status);
       /* Only now is it safe to move on. Redirecting on a failed webhook leaves
          a registrant with no CRM record: no reminder, no follow-up, and no way
@@ -935,7 +971,11 @@
       document.getElementById("doneWrap").hidden = false;
       document.getElementById("doneWrap").scrollIntoView({ block: "center", behavior: "smooth" });
       setTimeout(function(){ window.location.href = CONFIRMATION_URL; }, 1800);
-    }).catch(function(){
+    }).catch(function(e){
+      /* A blocked request lands here with no detail. The usual cause is opening
+         this page somewhere that forbids outbound requests, such as a preview
+         sandbox, rather than anything wrong with the webhook. */
+      if (DEBUG_REGISTRATION) console.warn("[masterclass] registration failed:", e);
       fail("Something went wrong reserving your seat. Please try again in a moment.");
     });
   });

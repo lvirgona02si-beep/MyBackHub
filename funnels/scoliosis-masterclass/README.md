@@ -103,8 +103,12 @@ arrive unidentified and no progress is recorded.
 
 ## Before launch
 
-- [ ] Wire `#regForm` to the LeadConnector/GHL endpoint and repoint the success
-      state at the real session room. It is front-end only right now.
+- [ ] Add the Meta pixel to all three pages. `fbq` is only called if already
+      defined, so nothing breaks until then, and the Meta fields in the
+      registration payload stay empty strings.
+- [ ] Fire `Lead` and `Schedule` server-side from the Conversions API, passing
+      the `event_id` from the registration payload. Neither fires from the
+      browser here, on purpose.
 - [ ] Set both countdowns to the true session cadence. They currently roll to
       the next `:00` or `:30`.
 - [ ] Set `LIVE_ROOM_URL` in `confirmation.html` if the waiting room is not at
@@ -113,6 +117,11 @@ arrive unidentified and no progress is recorded.
 - [ ] Remove the build note from the footer of each page.
 - [ ] Reconcile brand tokens against the brand guidelines.
       See [../../docs/brand-tokens.md](../../docs/brand-tokens.md).
+
+## Webhooks
+
+Both are wired and verified. Payload shapes, field-by-field notes and the
+debugging steps are in [WEBHOOK-PAYLOADS.md](WEBHOOK-PAYLOADS.md).
 
 ## Form fields
 
