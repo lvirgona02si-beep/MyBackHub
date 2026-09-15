@@ -1,0 +1,399 @@
+<title>Masterclass Seat Confirmed</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+  /* ============================================================
+     BRAND TOKENS: MyBackHub
+     Identical set to the registration page. Swap in one place.
+     ============================================================ */
+  :root{
+    --teal:      #0198A9;
+    --teal-lt:   #39A1B2;
+    --teal-dk:   #02707C;
+    --deep:      #06272D;
+    --deep-2:    #0A343C;
+    --coral:     #FF5F52;
+    --coral-dk:  #E0453A;
+
+    --ink:       #0C1E22;
+    --body:      #33484D;
+    --muted:     #62797D;
+    --cream:     #FAF7F2;
+    --paper:     #FFFFFF;
+    --line:      #E3DED5;
+    --line-dk:   rgba(255,255,255,.14);
+
+    --wrap: 1000px;
+    --r: 10px;
+    --shadow: 0 1px 2px rgba(6,39,45,.05), 0 12px 32px -12px rgba(6,39,45,.18);
+
+    --f-display: "Archivo", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-body: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--cream); color:var(--body);
+    font-family:var(--f-body); font-size:17px; line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{font-family:var(--f-display); color:var(--ink); margin:0; text-wrap:balance; line-height:1.1; letter-spacing:-.018em}
+  p{margin:0}
+  img{max-width:100%; display:block}
+  :focus-visible{outline:3px solid var(--teal-lt); outline-offset:3px}
+
+  .wrap{width:100%; max-width:var(--wrap); margin-inline:auto; padding-inline:20px}
+  .sec{padding-block:clamp(46px,6vw,76px)}
+  .sec--paper{background:var(--paper)}
+  .eyebrow{
+    font-family:var(--f-display); font-size:12px; font-weight:700;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--teal-dk);
+  }
+
+  /* ---------- Header ---------- */
+  .top{background:var(--deep); padding-block:17px; border-bottom:1px solid rgba(255,255,255,.08)}
+  .top .wrap{display:flex; align-items:center; justify-content:center}
+  .mark{font-family:var(--f-display); font-weight:800; font-size:19px; color:#fff; letter-spacing:-.02em; text-decoration:none}
+  .mark span{color:var(--teal-lt)}
+
+  /* ---------- Watch / status ---------- */
+  .watch{background:linear-gradient(176deg,var(--deep) 0%,var(--deep-2) 62%,#0D3C45 100%); color:#C8DBDE; padding-block:clamp(36px,5vw,56px) clamp(44px,5.5vw,68px); text-align:center}
+  .badge{
+    display:inline-flex; align-items:center; gap:8px; margin-bottom:18px;
+    background:rgba(1,152,169,.17); border:1px solid rgba(57,161,178,.5);
+    padding:7px 16px; border-radius:100px;
+    font-family:var(--f-display); font-size:12.5px; font-weight:700;
+    letter-spacing:.13em; text-transform:uppercase; color:#7FD3DF;
+  }
+  .watch h1{font-size:clamp(29px,4vw,46px); font-weight:800; color:#fff; letter-spacing:-.028em}
+  .watch h1 em{font-style:normal; color:var(--teal-lt)}
+  .watch-sub{margin:16px auto 0; max-width:54ch; font-size:17.5px; color:#A9C4C8}
+
+  .stage{
+    margin-top:clamp(26px,3.4vw,38px); background:rgba(255,255,255,.055);
+    border:1px solid rgba(255,255,255,.13); border-radius:14px;
+    padding:clamp(24px,3.4vw,34px) clamp(18px,3vw,32px);
+  }
+  .stage-label{font-family:var(--f-display); font-size:11.5px; font-weight:700; letter-spacing:.17em; text-transform:uppercase; color:#8FB4B9}
+  .cd-big{
+    font-family:var(--f-display); font-weight:800; color:#fff;
+    font-size:clamp(46px,8.5vw,80px); line-height:1; letter-spacing:-.04em;
+    font-variant-numeric:tabular-nums; margin-top:10px;
+  }
+  .cd-bar{height:5px; background:rgba(255,255,255,.12); border-radius:100px; overflow:hidden; margin:22px auto 0; max-width:440px}
+  .cd-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--teal) 0%,var(--teal-lt) 100%); border-radius:100px; transition:width 1s linear}
+  .stage-note{margin-top:16px; font-size:15.5px; color:#9FBABE}
+
+  .join-title{font-family:var(--f-display); font-size:clamp(23px,2.8vw,31px); font-weight:800; color:#fff; margin-top:8px}
+  .btn{
+    display:inline-block; border:0; cursor:pointer; text-align:center; text-decoration:none;
+    font-family:var(--f-display); font-weight:800;
+    background:var(--coral); color:#fff; font-size:19px; padding:16px 42px; border-radius:var(--r);
+    box-shadow:0 3px 0 var(--coral-dk); transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .btn:hover{background:#FF4F41; transform:translateY(1px); box-shadow:0 2px 0 var(--coral-dk)}
+  .btn:active{transform:translateY(3px); box-shadow:0 0 0 var(--coral-dk)}
+  .btn--quiet{
+    background:transparent; color:#BFD9DC; box-shadow:none; border:1.5px solid rgba(255,255,255,.28);
+    font-size:16px; padding:12px 26px; font-weight:700;
+  }
+  .btn--quiet:hover{background:rgba(255,255,255,.08); color:#fff; transform:none; box-shadow:none}
+  .stage .btn{margin-top:20px}
+
+  /* calendar row */
+  .cal{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:20px}
+  .cal a{
+    display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.18); border-radius:8px;
+    padding:9px 15px; font-family:var(--f-display); font-size:14px; font-weight:700; color:#D5E5E7;
+  }
+  .cal a:hover{background:rgba(255,255,255,.14); color:#fff}
+  .when{font-family:var(--f-display); font-size:clamp(20px,2.6vw,27px); font-weight:800; color:#fff; margin-top:8px; letter-spacing:-.02em}
+
+  /* ---------- Welcome video ---------- */
+  .welcome{text-align:center}
+  .welcome-head{font-family:var(--f-display); font-size:clamp(20px,2.4vw,26px); font-weight:700; color:var(--ink); letter-spacing:-.02em; margin-bottom:20px}
+  .player{
+    position:relative; aspect-ratio:16/9; max-width:100%; background:var(--deep);
+    border-radius:13px; overflow:hidden; box-shadow:var(--shadow); border:1px solid var(--line);
+  }
+  .player img,.player video{width:100%; height:100%; object-fit:cover; display:block}
+  .pbtn-wrap{
+    position:absolute; inset:0; width:100%; height:100%; border:0; padding:0; cursor:pointer;
+    background:linear-gradient(180deg,rgba(6,39,45,.08) 0%,rgba(6,39,45,.46) 100%);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pbtn-wrap:hover .pbtn{transform:scale(1.07); background:var(--coral)}
+  .pbtn{
+    width:74px; height:74px; border-radius:50%; background:rgba(255,95,82,.94);
+    display:flex; align-items:center; justify-content:center; flex:none;
+    box-shadow:0 5px 22px rgba(0,0,0,.42); transition:transform .15s ease, background .15s ease;
+  }
+  .pbtn svg{margin-left:5px}
+  .vtime{
+    position:absolute; right:11px; bottom:11px; background:rgba(4,29,34,.86); color:#fff;
+    font-family:var(--f-display); font-size:12.5px; font-weight:700;
+    padding:4px 9px; border-radius:5px; font-variant-numeric:tabular-nums; pointer-events:none;
+  }
+
+  /* ---------- Checklist ---------- */
+  .head{text-align:center; margin-bottom:clamp(26px,3.2vw,38px)}
+  .head h2{font-size:clamp(26px,3.2vw,38px); font-weight:800; margin-top:10px}
+  .checklist{display:grid; grid-template-columns:1fr 1fr; gap:22px 30px}
+  .check{display:grid; grid-template-columns:32px 1fr; gap:15px; align-items:start}
+  .tick{
+    width:32px; height:32px; border-radius:8px; background:rgba(1,152,169,.13);
+    border:1px solid rgba(57,161,178,.42); color:var(--teal-dk);
+    display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:700; flex:none;
+  }
+  .check h4{font-size:18px; font-weight:800; margin-bottom:5px}
+  .check p{font-size:16px; color:var(--muted)}
+
+  /* ---------- Bottom CTA ---------- */
+  .bottom{background:var(--deep); color:#A9C4C8; text-align:center; padding-block:clamp(46px,6vw,72px)}
+  .bottom h2{color:#fff; font-size:clamp(25px,3.1vw,37px); font-weight:800}
+  .bottom p{max-width:54ch; margin:15px auto 26px; font-size:17.5px}
+  .cta-note{margin-top:16px; font-family:var(--f-display); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--teal-lt)}
+
+  /* ---------- Footer ---------- */
+  footer{background:#041D22; color:#7C979B; padding-block:40px 30px; font-size:14px}
+  footer .mark{font-size:17px}
+  .frow{display:flex; justify-content:space-between; gap:18px; flex-wrap:wrap; align-items:center; padding-bottom:20px; border-bottom:1px solid var(--line-dk)}
+  .fnav{display:flex; gap:18px; flex-wrap:wrap}
+  .fnav a{color:#9FBABE; text-decoration:none; font-size:13.5px}
+  .fnav a:hover{color:#fff; text-decoration:underline}
+  .disclaim{margin-top:20px; font-size:12.8px; line-height:1.65; color:#5F7B80}
+  .disclaim b{color:#8FAAAE}
+  .buildnote{margin-top:18px; padding:11px 14px; border:1px dashed var(--line-dk); border-radius:8px; font-size:12.5px; color:#6E8A8E}
+
+  @media (max-width:700px){
+    body{font-size:16.5px}
+    .checklist{grid-template-columns:1fr; gap:20px}
+    .frow{flex-direction:column; align-items:flex-start}
+    .fnav{gap:12px}
+    .btn{width:100%; padding-inline:20px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important; transition:none !important}
+  }
+</style>
+
+<!-- ====================== HEADER ====================== -->
+<div class="top">
+  <div class="wrap"><a class="mark" href="#">MyBack<span>Hub</span></a></div>
+</div>
+
+<!-- ====================== STATUS ====================== -->
+<section class="watch">
+  <div class="wrap">
+    <div class="badge">&#10003; Seat Reserved</div>
+    <h1 id="watchTitle">Your Masterclass Starts <em>Shortly</em></h1>
+    <p class="watch-sub" id="watchSub">Keep this page open. Your session begins automatically the moment the countdown reaches zero.</p>
+
+    <!-- Counting down -->
+    <div class="stage" id="cdStage">
+      <span class="stage-label">Starting in</span>
+      <div class="cd-big" id="cdBig">--:--</div>
+      <div class="cd-bar"><div class="cd-fill" id="cdFill"></div></div>
+      <p class="stage-note" id="cdNote">We have emailed your joining link too, in case you need to come back to it.</p>
+      <div class="cal">
+        <a id="calGoogle" href="#" target="_blank" rel="noopener">Google Calendar</a>
+        <a id="calOutlook" href="#" target="_blank" rel="noopener">Outlook</a>
+        <a id="calIcs" href="#" download="mybackhub-masterclass.ics">Apple / .ics</a>
+      </div>
+      <a class="btn btn--quiet" id="joinEarly" href="#" style="margin-top:22px">Go to the waiting room &rarr;</a>
+    </div>
+
+    <!-- Session open -->
+    <div class="stage" id="joinStage" hidden>
+      <span class="stage-label">Your session is open</span>
+      <div class="join-title">The masterclass is ready</div>
+      <a class="btn" id="joinBtn" href="#">Join The Masterclass &rarr;</a>
+      <p class="stage-note">Runs about 35 minutes, then Dr. Mike takes questions live. Best watched in one sitting.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== WELCOME VIDEO ====================== -->
+<section class="sec sec--paper">
+  <div class="wrap">
+    <div class="welcome">
+      <p class="welcome-head">A quick word from Dr. Mike before you start</p>
+      <div class="player" id="player">
+        <img src="https://assets.cdn.filesafe.space/wPy45DABxzg1naBrVAG8/media/transcoded_videos/e6355af3cd1a8277.jpg" alt="Dr. Michael Gardner recording a welcome message">
+        <button class="pbtn-wrap" type="button" id="playBtn" data-src="https://assets.cdn.filesafe.space/wPy45DABxzg1naBrVAG8/media/transcoded_videos/cts-e6355af3cd1a8277_720p.mp4" aria-label="Play Dr. Mike&rsquo;s welcome message, 1 minute 39 seconds">
+          <span class="pbtn"><svg width="26" height="29" viewBox="0 0 22 24" aria-hidden="true"><path d="M2 2.3v19.4c0 1 1.1 1.6 2 1.1l16.3-9.7c.8-.5.8-1.7 0-2.2L4 1.2c-.9-.5-2 .1-2 1.1z" fill="#fff"/></svg></span>
+        </button>
+        <span class="vtime">1:39</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== CHECKLIST ====================== -->
+<section class="sec">
+  <div class="wrap">
+    <div class="head">
+      <div class="eyebrow">Before It Starts</div>
+      <h2>Your Masterclass Checklist</h2>
+    </div>
+
+    <div class="checklist">
+      <div class="check">
+        <div class="tick">&#10003;</div>
+        <div>
+          <h4>Check your inbox, and your spam folder</h4>
+          <p>Your joining link is on its way. If it has not landed within a few minutes, it is usually sitting in spam or promotions.</p>
+        </div>
+      </div>
+      <div class="check">
+        <div class="tick">&#10003;</div>
+        <div>
+          <h4>Add it to your calendar</h4>
+          <p>Takes five seconds and means it does not get lost behind everything else in your day.</p>
+        </div>
+      </div>
+      <div class="check">
+        <div class="tick">&#10003;</div>
+        <div>
+          <h4>Find somewhere you can stand up</h4>
+          <p>Dr. Mike demonstrates each of the three secrets on a real spine. They make far more sense if you have room to try the position yourself.</p>
+        </div>
+      </div>
+      <div class="check">
+        <div class="tick">&#10003;</div>
+        <div>
+          <h4>Write down your questions</h4>
+          <p>Dr. Mike answers questions live at the end. Anything the masterclass does not cover, put it to him directly while you have him.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================== BOTTOM CTA ====================== -->
+<section class="bottom">
+  <div class="wrap">
+    <h2>Questions After The Masterclass?</h2>
+    <p>Book a short call with one of our scoliosis specialists to talk through your own curve, what you saw in the session, and anything it left open.</p>
+    <a class="btn" href="#">Book A Call &rarr;</a>
+    <p class="cta-note">No pitch &middot; No pressure &middot; No commitment</p>
+  </div>
+</section>
+
+<!-- ====================== FOOTER ====================== -->
+<footer>
+  <div class="wrap">
+    <div class="frow">
+      <div class="mark">MyBack<span>Hub</span></div>
+      <nav class="fnav">
+        <a href="#">Our Mission</a><a href="#">Our Team</a><a href="#">Our Story</a><a href="#">FAQs</a>
+        <a href="#">Privacy Policy</a><a href="#">Terms &amp; Conditions</a><a href="#">Refunds &amp; Returns</a><a href="#">Member Login</a>
+      </nav>
+    </div>
+    <p class="disclaim" style="margin-top:18px">&copy; 2026 MyBackHub. All rights reserved.</p>
+    <p class="disclaim">
+      For informational purposes only. Not intended to be a substitute for professional medical advice. Talk with your healthcare provider about any questions you may have regarding a medical situation. Names, likenesses, and stories may be altered and/or aggregated for clarity and/or identity protection.
+    </p>
+    <p class="disclaim">
+      <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.
+    </p>
+    <p class="buildnote"><b>Build note (remove before launch):</b> the countdown rolls to the next :00 or :30 and flips to the open state at zero. Point it at your real session cadence, and repoint the waiting room, join and Book A Call links at your live URLs. Calendar links are generated from the session time and work as-is.</p>
+  </div>
+</footer>
+
+<script>
+  /* ---------------------------------------------------------
+     Session clock. Sessions run on the hour and the half hour,
+     matching the registration page.
+     --------------------------------------------------------- */
+  var SESSION_MINUTES = 35;
+
+  function nextSession(){
+    var d = new Date();
+    d.setSeconds(0, 0);
+    d.setMinutes(d.getMinutes() < 30 ? 30 : 60);
+    return d;
+  }
+
+  var target = nextSession();
+  var windowStart = new Date(target.getTime() - 30 * 60000);
+
+  var cdStage   = document.getElementById("cdStage");
+  var joinStage = document.getElementById("joinStage");
+  var cdBig     = document.getElementById("cdBig");
+  var cdFill    = document.getElementById("cdFill");
+  var title     = document.getElementById("watchTitle");
+  var sub       = document.getElementById("watchSub");
+
+  function pad(n){ return String(n).padStart(2, "0"); }
+
+  function tick(){
+    var left = Math.floor((target - new Date()) / 1000);
+
+    if (left <= 0){
+      cdStage.hidden = true;
+      joinStage.hidden = false;
+      title.innerHTML = 'Your Masterclass Is <em>Live</em>';
+      sub.textContent = "Dr. Mike is starting now. Click through and take a seat.";
+      return;
+    }
+
+    cdBig.textContent = pad(Math.floor(left / 60)) + ":" + pad(left % 60);
+    var elapsed = (new Date() - windowStart) / (target - windowStart);
+    cdFill.style.width = Math.max(0, Math.min(100, elapsed * 100)).toFixed(1) + "%";
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  /* ---- Calendar links, built from the session time ---- */
+  function stamp(d){
+    return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + "T" +
+           pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + "00Z";
+  }
+  var ends   = new Date(target.getTime() + SESSION_MINUTES * 60000);
+  var evTitle = "Scoliosis Masterclass with Dr. Michael Gardner, MD";
+  var evBody  = "The 3 secrets to getting out of scoliosis pain, without surgery. Your joining link is in your inbox.";
+
+  document.getElementById("calGoogle").href =
+    "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+    "&text=" + encodeURIComponent(evTitle) +
+    "&dates=" + stamp(target) + "/" + stamp(ends) +
+    "&details=" + encodeURIComponent(evBody);
+
+  document.getElementById("calOutlook").href =
+    "https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent" +
+    "&subject=" + encodeURIComponent(evTitle) +
+    "&startdt=" + target.toISOString() +
+    "&enddt=" + ends.toISOString() +
+    "&body=" + encodeURIComponent(evBody);
+
+  var ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MyBackHub//Masterclass//EN",
+    "BEGIN:VEVENT",
+    "UID:" + Date.now() + "@mybackhub.com",
+    "DTSTAMP:" + stamp(new Date()),
+    "DTSTART:" + stamp(target),
+    "DTEND:" + stamp(ends),
+    "SUMMARY:" + evTitle,
+    "DESCRIPTION:" + evBody,
+    "END:VEVENT", "END:VCALENDAR"
+  ].join("\r\n");
+  var icsLink = document.getElementById("calIcs");
+  icsLink.href = "data:text/calendar;charset=utf-8," + encodeURIComponent(ics);
+
+  /* ---- Welcome video ---- */
+  document.getElementById("playBtn").addEventListener("click", function(){
+    var btn = this;
+    var stage = document.getElementById("player");
+    var v = document.createElement("video");
+    v.src = btn.dataset.src;
+    v.controls = true;
+    v.autoplay = true;
+    v.playsInline = true;
+    v.preload = "metadata";
+    v.setAttribute("controlslist", "nodownload");
+    stage.innerHTML = "";
+    stage.appendChild(v);
+    v.play().catch(function(){ /* autoplay blocked, the controls are there */ });
+  });
+</script>
