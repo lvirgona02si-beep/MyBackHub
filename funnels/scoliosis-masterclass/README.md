@@ -64,11 +64,37 @@ At the top of the script in `live.html`:
 |---|---|---|
 | `MASTERCLASS_SRC` | Dr. Mike's welcome video, as a testable stand-in | The real masterclass recording |
 | `MASTERCLASS_SECONDS` | `99`, the stand-in's length | `35 * 60` |
-| `GHL_PROGRESS_WEBHOOK` | Empty, so pings are a no-op | Your own inbound webhook |
+| `GHL_PROGRESS_WEBHOOK` | Set | Done |
 
-`GHL_PROGRESS_WEBHOOK` is deliberately empty rather than copied from the
-reference funnel. Pointing it at another brand's hook would post your
-attendees into their CRM.
+### Progress payload
+
+`GHL_PROGRESS_WEBHOOK` fires one POST per milestone. The workflow behind it
+only ever receives this shape, so it cannot be triggered by anything else on
+the funnel:
+
+```json
+{
+  "type": "masterclass_progress",
+  "tag": "watched-50",
+  "percent": 50,
+  "seconds_watched": 1050,
+  "watched_at": "2026-09-15T19:30:00.000Z",
+  "contact_id": "<from ?c= on the joining link>",
+  "email": "<if known>",
+  "first_name": "<if known>"
+}
+```
+
+`tag` arrives ready-made (`watched-start`, `watched-25`, `watched-50`,
+`watched-75`, `watched-complete`) so the workflow applies it rather than
+branching on a percentage.
+
+Nothing is sent unless a `contact_id` or `email` is known. An empty email
+reaching a Create/Update Contact action matches nothing and creates a blank
+record.
+
+The joining link in your email needs `?c={{contact.id}}` on it, or attendees
+arrive unidentified and no progress is recorded.
 
 ## Before launch
 

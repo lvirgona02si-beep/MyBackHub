@@ -287,9 +287,10 @@
      they can actually be seen. Put this back to 35 * 60 for the real session. */
   var MASTERCLASS_SECONDS = 99;
 
-  /* Your own GHL inbound webhook. Left empty on purpose: progress pings are a
-     no-op until you paste one in. Never point this at another brand's hook. */
-  var GHL_PROGRESS_WEBHOOK = "";
+  /* MyBackHub inbound webhook for masterclass watch progress. This receives
+     only the progress payload below, so the workflow behind it cannot be
+     triggered by any other event on the funnel. */
+  var GHL_PROGRESS_WEBHOOK = "https://services.leadconnectorhq.com/hooks/vFCObiJhlDKaU7P0ELzv/webhook-trigger/48c9302d-3b08-4f59-ba17-a00c4b3c97aa";
 
   var BOOKING_URL = "#";
 
