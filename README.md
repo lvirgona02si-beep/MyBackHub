@@ -1,57 +1,48 @@
-# MyBackHub — Scoliosis Masterclass Funnel
+# MyBackHub
 
-Rebuild of the scoliosis masterclass registration and confirmation pages,
-restructured for conversion. Both pages are self-contained HTML: no build
-step, no dependencies, drop straight into GoHighLevel or any host.
+Funnel buildout for MyBackHub, a scoliosis pain programme.
 
-## Pages
+## Layout
 
-| File | Replaces |
+```
+funnels/                    one folder per funnel, self-contained
+  scoliosis-masterclass/
+    registration.html
+    confirmation.html
+    media/                  video and imagery for this funnel only
+shared/                     assets used by more than one funnel
+  brand/
+docs/                       conventions, brand tokens, source funnels
+```
+
+If only one funnel uses a file, it lives inside that funnel's folder. Promote
+it to `shared/` when a second funnel needs it, not before.
+
+Read [docs/conventions.md](docs/conventions.md) before adding anything.
+
+## Funnels
+
+| Funnel | Pages | Status |
+|---|---|---|
+| [Scoliosis Masterclass](funnels/scoliosis-masterclass/) | Registration, confirmation | Built, not yet wired to the CRM |
+
+## Docs
+
+| Doc | What it covers |
 |---|---|
-| [build/sc-masterclass-registration.html](build/sc-masterclass-registration.html) | `watch.mybackhub.com/sc-masterclass-registration` |
-| [build/sc-masterclass-confirmation.html](build/sc-masterclass-confirmation.html) | `watch.mybackhub.com/thank-you-sc-masterclass` |
+| [Conventions](docs/conventions.md) | Where files go and how they are named |
+| [Brand tokens](docs/brand-tokens.md) | Palette, type, and house copy style |
+| [Source funnels](docs/source-funnels.md) | Pages being replaced, and the structural reference |
 
-Structure and copy style are modelled on a workshop funnel from a different
-industry (Golden Key Property), adapted to scoliosis.
+## Working on the pages
 
-### What changed on the registration page
+Every page is a single self-contained HTML file. No build step, no package
+manager, no dependencies. Open one in a browser and it runs.
 
-- Registration form moved above the fold, beside the headline. The live page
-  renders a permanently broken `Getting sessions...` loading state where the
-  session picker should be.
-- Headline interrupts a decision in progress rather than describing a benefit.
-- Six specific discovery bullets in place of three abstract ones.
-- Session countdown, stat strip, and a "Worth Your Time If" qualification block.
-- Six video testimonials pulled from the pre-call FAQ page, replacing the
-  Elfsight text widget. See [build/testimonial-video-map.md](build/testimonial-video-map.md).
-- Medical disclaimer added.
-- Sticky mobile CTA bar.
+Colour and type live in one `:root` block at the top of each file. Change them
+there rather than hunting through the stylesheet.
 
-### What changed on the confirmation page
-
-- Live session countdown with a progress bar, flipping to an open/join state
-  at zero. The current page never tells anyone when their session is.
-- Google, Outlook and .ics calendar links generated from the session time.
-- Checklist expanded to four items and rewritten for an exercise-based session.
-- Post-session "Book A Call" CTA.
-- Dr. Mike's welcome video carried over.
-
-## Before launch
-
-- [ ] Wire `#regForm` to the LeadConnector/GHL endpoint and repoint the success
-      state at the real session room.
-- [ ] Set the countdown to the true session cadence (currently rolls to the
-      next `:00` or `:30`).
-- [ ] Repoint placeholder links: waiting room, join, Book A Call, and the
-      footer nav.
-- [ ] Remove the build note from the footer of each page.
-- [ ] Reconcile brand tokens against the brand guidelines doc. Colours and type
-      are currently reverse-engineered from the live site CSS and are defined in
-      one `:root` block at the top of each file.
-
-## Assets
-
-`Assets/` holds the header banner and local copies of the testimonial videos
-(480p) with their poster frames. The published HTML streams video from the
-existing filesafe CDN rather than these files; they are here as a fallback if
-those URLs ever move.
+Two house rules worth knowing before you edit copy: coral is reserved for
+call-to-action buttons and nothing else, and there are no em dashes in
+customer-facing copy. Both are explained in
+[docs/brand-tokens.md](docs/brand-tokens.md).
