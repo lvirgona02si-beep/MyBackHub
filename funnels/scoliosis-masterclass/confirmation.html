@@ -297,7 +297,7 @@
     <p class="disclaim">
       <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.
     </p>
-    <p class="buildnote"><b>Build note (remove before launch):</b> the countdown rolls to the next :00 or :30 and flips to the open state at zero. Point it at your real session cadence, and repoint the waiting room, join and Book A Call links at your live URLs. Calendar links are generated from the session time and work as-is.</p>
+    <p class="buildnote"><b>Build note (remove before launch):</b> the countdown rolls to the next :00 or :30 and flips to the open state at zero. Point it at your real session cadence, and set <code>LIVE_ROOM_URL</code> to the waiting room path, and repoint the Book A Call link and footer nav. Calendar links are generated from the session time and work as-is.</p>
   </div>
 </footer>
 
@@ -308,6 +308,9 @@
      --------------------------------------------------------- */
   var SESSION_MINUTES = 35;
 
+  /* Where the waiting room lives. Relative, so it works on any host. */
+  var LIVE_ROOM_URL = "live.html";
+
   function nextSession(){
     var d = new Date();
     d.setSeconds(0, 0);
@@ -317,6 +320,17 @@
 
   var target = nextSession();
   var windowStart = new Date(target.getTime() - 30 * 60000);
+
+  /* Hand the session start to the waiting room so it continues this exact
+     countdown instead of starting a second one. Mirrored into localStorage as
+     well: someone clicking the joining link from their email arrives in a
+     fresh browser session where sessionStorage is already gone, and without
+     this they look like a brand new visitor. */
+  try { sessionStorage.setItem("mbhMasterclassStart", String(target.getTime())); } catch (e) {}
+  try { localStorage.setItem("mbhMasterclassStart", String(target.getTime())); } catch (e) {}
+
+  document.getElementById("joinEarly").href = LIVE_ROOM_URL;
+  document.getElementById("joinBtn").href   = LIVE_ROOM_URL;
 
   var cdStage   = document.getElementById("cdStage");
   var joinStage = document.getElementById("joinStage");

@@ -1,0 +1,577 @@
+<title>Masterclass Live Room</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+  /* ============================================================
+     BRAND TOKENS: MyBackHub
+     Same set as registration.html and confirmation.html.
+     See docs/brand-tokens.md.
+     ============================================================ */
+  :root{
+    --teal:      #0198A9;
+    --teal-lt:   #39A1B2;
+    --teal-dk:   #02707C;
+    --deep:      #06272D;
+    --deep-2:    #0A343C;
+    --coral:     #FF5F52;
+    --coral-dk:  #E0453A;
+
+    --ink:       #0C1E22;
+    --cream:     #FAF7F2;
+    --paper:     #FFFFFF;
+    --line-dk:   rgba(255,255,255,.14);
+
+    /* Status red, deliberately distinct from the coral used for actions.
+       A pulsing dot is a state, not something to click. */
+    --live:      #FF3B30;
+
+    --room:      #082F36;   /* raised surfaces inside the dark room */
+    --on-dark:   #C8DBDE;
+    --on-dark-2: #8FB4B9;
+
+    --r: 14px;
+    --f-display: "Archivo", "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-body: "Source Sans 3", "Source Sans Pro", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  /* This page commits to one dark look. A live room is watched, not read,
+     and a light variant would fight the video for attention. */
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--deep); color:var(--on-dark);
+    font-family:var(--f-body); font-size:17px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2{font-family:var(--f-display); color:#fff; margin:0; text-wrap:balance; line-height:1.08; letter-spacing:-.026em}
+  p{margin:0}
+  :focus-visible{outline:3px solid var(--teal-lt); outline-offset:3px}
+
+  .wrap{width:100%; max-width:1180px; margin-inline:auto; padding-inline:20px}
+
+  /* ---------- Header ---------- */
+  .top{background:#041D22; padding-block:16px; border-bottom:1px solid rgba(255,255,255,.08)}
+  .top .wrap{display:flex; align-items:center; justify-content:center}
+  .mark{font-family:var(--f-display); font-weight:800; font-size:19px; color:#fff; letter-spacing:-.02em; text-decoration:none}
+  .mark span{color:var(--teal-lt)}
+
+  /* ---------- Room ---------- */
+  .room{
+    background:linear-gradient(176deg,var(--deep) 0%,var(--deep-2) 58%,#0D3C45 100%);
+    padding-block:clamp(30px,4.2vw,50px) clamp(40px,5.2vw,64px); text-align:center;
+  }
+  .badge{
+    display:inline-flex; align-items:center; gap:9px; margin-bottom:17px;
+    background:rgba(1,152,169,.17); border:1px solid rgba(57,161,178,.5);
+    padding:8px 17px; border-radius:100px;
+    font-family:var(--f-display); font-size:11.5px; font-weight:800;
+    letter-spacing:.2em; text-transform:uppercase; color:#7FD3DF;
+  }
+  .badge.is-live{background:rgba(255,59,48,.13); border-color:rgba(255,59,48,.55); color:#fff}
+  .dot{
+    display:inline-block; width:9px; height:9px; border-radius:50%;
+    background:var(--live); flex:none; animation:livePulse 1.1s ease-in-out infinite;
+  }
+  @keyframes livePulse{0%,100%{opacity:1; transform:scale(1)}50%{opacity:.4; transform:scale(.82)}}
+
+  h1{font-size:clamp(28px,3.9vw,45px); font-weight:800}
+  h1 em{font-style:normal; color:var(--teal-lt)}
+  .room-sub{margin:15px auto 0; max-width:56ch; font-size:17px; color:var(--on-dark-2)}
+
+  .stagewrap{max-width:900px; margin:clamp(26px,3.4vw,38px) auto 0; transition:max-width .35s ease}
+  .stagewrap.is-live{max-width:1180px}
+
+  /* ---------- Countdown ---------- */
+  .cd{
+    background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
+    padding:clamp(38px,5.5vw,62px) clamp(20px,3vw,32px);
+    box-shadow:0 26px 70px rgba(0,0,0,.45);
+  }
+  .cd-label{
+    display:block; font-family:var(--f-display); font-size:11px; font-weight:800;
+    letter-spacing:.21em; text-transform:uppercase; color:var(--on-dark-2); margin-bottom:14px;
+  }
+  .cd-time{
+    font-family:var(--f-display); font-size:clamp(52px,10.5vw,100px); font-weight:800;
+    color:#fff; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums;
+    margin-bottom:26px;
+  }
+  .cd-bar{height:6px; border-radius:100px; background:rgba(255,255,255,.1); overflow:hidden; max-width:420px; margin:0 auto 18px}
+  .cd-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--teal) 0%,var(--teal-lt) 100%); transition:width 1s linear}
+  .cd-note{font-size:14.5px; color:var(--on-dark-2)}
+
+  /* ---------- Live grid ---------- */
+  .live{display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:stretch}
+  .player{
+    position:relative; aspect-ratio:16/9; max-width:100%; border-radius:var(--r); overflow:hidden;
+    background:#041D22; border:1px solid var(--line-dk); box-shadow:0 26px 70px rgba(0,0,0,.5);
+  }
+  .player video,.player iframe{width:100%; height:100%; border:0; display:block; object-fit:cover}
+
+  .soundbar{
+    position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:3;
+    display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:0;
+    background:var(--coral); color:#fff; border-radius:100px; padding:13px 24px;
+    font-family:var(--f-display); font-size:14px; font-weight:800;
+    box-shadow:0 10px 30px rgba(0,0,0,.45); animation:soundPulse 2s ease-in-out infinite;
+  }
+  .soundbar:hover{background:#FF4F41}
+  .soundbar svg{width:17px; height:17px}
+  @keyframes soundPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.045)}}
+
+  /* ---------- Chat ---------- */
+  .chat{
+    background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
+    display:flex; flex-direction:column; overflow:hidden; text-align:left; min-height:300px;
+  }
+  .chat-head{
+    padding:13px 16px; border-bottom:1px solid rgba(255,255,255,.1);
+    display:flex; align-items:center; gap:9px; flex:none;
+  }
+  .chat-title{font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; color:#fff}
+  .chat-body{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px}
+  .chat-foot{
+    padding:11px 16px; border-top:1px solid rgba(255,255,255,.1); flex:none;
+    font-size:12.5px; color:var(--on-dark-2); line-height:1.45;
+  }
+  .msg-from{font-family:var(--f-display); font-size:11.5px; font-weight:800; color:var(--teal-lt); margin-bottom:4px; letter-spacing:.02em}
+  .msg-text{font-size:14px; color:rgba(255,255,255,.8); line-height:1.55}
+  .msg-link{
+    display:inline-block; margin-top:11px; padding:10px 16px; border-radius:8px;
+    background:var(--coral); color:#fff; text-decoration:none;
+    font-family:var(--f-display); font-weight:800; font-size:13px;
+  }
+  .msg-link:hover{background:#FF4F41}
+
+  /* ---------- Meta row ---------- */
+  .meta{display:flex; align-items:center; justify-content:center; gap:28px; flex-wrap:wrap; margin-top:22px}
+  .meta div{font-size:13.5px; color:var(--on-dark-2); font-weight:600}
+  .meta strong{color:var(--teal-lt); font-weight:800; font-family:var(--f-display)}
+
+  /* ---------- Bottom CTA ---------- */
+  .bottom{background:#041D22; text-align:center; padding-block:clamp(44px,5.6vw,68px); border-top:1px solid rgba(255,255,255,.07)}
+  .bottom h2{font-size:clamp(24px,3vw,35px); font-weight:800}
+  .bottom p{max-width:54ch; margin:14px auto 25px; font-size:17px; color:var(--on-dark-2)}
+  .btn{
+    display:inline-block; border:0; cursor:pointer; text-decoration:none;
+    font-family:var(--f-display); font-weight:800; font-size:19px;
+    background:var(--coral); color:#fff; padding:16px 42px; border-radius:10px;
+    box-shadow:0 3px 0 var(--coral-dk); transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .btn:hover{background:#FF4F41; transform:translateY(1px); box-shadow:0 2px 0 var(--coral-dk)}
+  .btn:active{transform:translateY(3px); box-shadow:0 0 0 var(--coral-dk)}
+  .cta-note{margin-top:15px; font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--teal-lt)}
+
+  /* ---------- Footer ---------- */
+  footer{background:#031519; color:#6E8A8E; padding-block:36px 28px; font-size:13.5px}
+  .frow{display:flex; justify-content:space-between; gap:18px; flex-wrap:wrap; align-items:center; padding-bottom:18px; border-bottom:1px solid var(--line-dk)}
+  .fnav{display:flex; gap:17px; flex-wrap:wrap}
+  .fnav a{color:#9FBABE; text-decoration:none; font-size:13px}
+  .fnav a:hover{color:#fff; text-decoration:underline}
+  .disclaim{margin-top:17px; font-size:12.5px; line-height:1.65; color:#5A767A}
+  .disclaim b{color:#8FAAAE}
+  .buildnote{margin-top:16px; padding:11px 14px; border:1px dashed var(--line-dk); border-radius:8px; font-size:12.5px; color:#6E8A8E}
+
+  @media (max-width:900px){
+    .live{grid-template-columns:1fr}
+    .player{order:1}
+    .chat{order:2; min-height:260px; max-height:360px}
+  }
+  @media (max-width:620px){
+    body{font-size:16.5px}
+    .meta{gap:8px 18px}
+    .frow{flex-direction:column; align-items:flex-start}
+    .btn{width:100%; padding-inline:20px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none !important; transition:none !important}
+  }
+</style>
+
+<!-- ====================== HEADER ====================== -->
+<div class="top">
+  <div class="wrap"><a class="mark" href="#">MyBack<span>Hub</span></a></div>
+</div>
+
+<!-- ====================== ROOM ====================== -->
+<section class="room">
+  <div class="wrap">
+    <div class="badge" id="badge">Masterclass Room</div>
+    <h1 id="roomTitle">Your Masterclass Starts <em>Shortly</em></h1>
+    <p class="room-sub" id="roomSub">Keep this page open. Your session begins automatically the moment the countdown reaches zero.</p>
+
+    <div class="stagewrap" id="stagewrap">
+
+      <!-- Counting down -->
+      <div class="cd" id="cdStage">
+        <span class="cd-label">Starting in</span>
+        <div class="cd-time" id="cdBig">--:--</div>
+        <div class="cd-bar"><div class="cd-fill" id="cdFill"></div></div>
+        <p class="cd-note">Your session is about to begin. Keep this page open.</p>
+      </div>
+
+      <!-- Live: chat alongside the player -->
+      <div class="live" id="liveGrid" hidden>
+        <aside class="chat">
+          <div class="chat-head">
+            <span class="dot"></span>
+            <span class="chat-title">Live Chat</span>
+          </div>
+          <div class="chat-body" id="chatBody"></div>
+          <div class="chat-foot">Dr. Mike takes questions live at the end of the session. Note yours down as they come to you.</div>
+        </aside>
+
+        <div class="player" id="playerStage">
+          <button type="button" class="soundbar" id="soundBar" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+            </svg>
+            Tap for sound
+          </button>
+        </div>
+      </div>
+
+      <div class="meta" id="meta" hidden>
+        <div><strong>35</strong> minutes</div>
+        <div><strong>Link</strong> sent to your inbox</div>
+        <div><strong>Questions?</strong> Book a call below</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ====================== BOTTOM CTA ====================== -->
+<section class="bottom">
+  <div class="wrap">
+    <h2>Questions After The Masterclass?</h2>
+    <p>Book a short call with one of our scoliosis specialists to talk through your own curve, what you saw in the session, and anything it left open.</p>
+    <a class="btn" href="#">Book A Call &rarr;</a>
+    <p class="cta-note">No pitch &middot; No pressure &middot; No commitment</p>
+  </div>
+</section>
+
+<!-- ====================== FOOTER ====================== -->
+<footer>
+  <div class="wrap">
+    <div class="frow">
+      <div class="mark">MyBack<span>Hub</span></div>
+      <nav class="fnav">
+        <a href="#">Our Mission</a><a href="#">Our Team</a><a href="#">Our Story</a><a href="#">FAQs</a>
+        <a href="#">Privacy Policy</a><a href="#">Terms &amp; Conditions</a><a href="#">Refunds &amp; Returns</a><a href="#">Member Login</a>
+      </nav>
+    </div>
+    <p class="disclaim" style="margin-top:16px">&copy; 2026 MyBackHub. All rights reserved.</p>
+    <p class="disclaim">
+      For informational purposes only. Not intended to be a substitute for professional medical advice. Talk with your healthcare provider about any questions you may have regarding a medical situation. Names, likenesses, and stories may be altered and/or aggregated for clarity and/or identity protection.
+    </p>
+    <p class="disclaim">
+      <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.
+    </p>
+    <p class="buildnote"><b>Build note (remove before launch):</b> three constants at the top of the script need real values before this goes live: <code>MASTERCLASS_SRC</code> (currently Dr. Mike&rsquo;s welcome video as a testable stand-in), <code>MASTERCLASS_SECONDS</code> (set to the stand-in&rsquo;s length, put back to <code>35 * 60</code>), and <code>GHL_PROGRESS_WEBHOOK</code> (empty, so progress pings are a no-op until you paste your own inbound webhook). Repoint the Book A Call links and footer nav too.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================================
+     CONFIGURE ME
+     ========================================================================= */
+
+  /* TEMPORARY: Dr. Mike's welcome video, so the room is testable end to end.
+     Swap for the real masterclass recording before launch. If you move to an
+     embed (Vimeo, YouTube, GHL), see buildPlayer below. */
+  var MASTERCLASS_SRC = "https://assets.cdn.filesafe.space/wPy45DABxzg1naBrVAG8/media/transcoded_videos/cts-e6355af3cd1a8277_720p.mp4";
+
+  /* TEMPORARY: length of the stand-in above, so the progress marks fire where
+     they can actually be seen. Put this back to 35 * 60 for the real session. */
+  var MASTERCLASS_SECONDS = 99;
+
+  /* Your own GHL inbound webhook. Left empty on purpose: progress pings are a
+     no-op until you paste one in. Never point this at another brand's hook. */
+  var GHL_PROGRESS_WEBHOOK = "";
+
+  var BOOKING_URL = "#";
+
+  /* Sessions run on the hour and the half hour, matching the other pages. */
+  var SLOT_MS = 30 * 60 * 1000;
+
+  /* How late someone can arrive and still be dropped into a session already in
+     progress, the way they would be on a real live call. Past this they have
+     missed too much to follow it, so they get a fresh session from the top.
+     Never longer than the session itself. */
+  var LATE_JOIN_MAX_MS = Math.min(10 * 60, MASTERCLASS_SECONDS) * 1000;
+
+  /* -------------------------------------------------------------------------
+     Host chat feed.
+
+     One way, and host only. There are deliberately no scripted "attendee"
+     messages: inventing patients who say a treatment worked is not something
+     we do, and on a medical offer it is the kind of thing that ends a company.
+     Real questions go to the live Q&A at the end.
+
+     `at` is seconds of video watched, so the feed stays in step with the
+     viewer even if they join late or switch tabs.
+     ------------------------------------------------------------------------- */
+  var HOST_MESSAGES = [
+    { at: 5,    from: "MyBackHub Team", text: "Welcome in. Dr. Mike is about to walk through the three secrets. He takes questions live at the end, so note yours down as they come up." },
+    { at: 60,   from: "MyBackHub Team", text: "PLACEHOLDER: time this to where Dr. Mike explains why straight-spine therapy fails a curved spine." },
+    { at: 420,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the first secret." },
+    { at: 900,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the rotation explanation, the part most people have never had described to them." },
+    { at: 1320, from: "MyBackHub Team", text: "If you want to go through your own curve with someone, our specialists have a few times open this week.", link: { href: BOOKING_URL, label: "Book your call" } },
+    { at: 1680, from: "MyBackHub Team", text: "Link again while it is fresh. Nothing is for sale on the call.", link: { href: BOOKING_URL, label: "Book your call" } }
+  ];
+
+  /* =========================================================================
+     Wiring
+     ========================================================================= */
+
+  var SESSION_KEY = "mbhMasterclassStart";
+  var ATTENDEE_KEY = "mbhAttendee";
+
+  var cdStage   = document.getElementById("cdStage");
+  var cdBig     = document.getElementById("cdBig");
+  var cdFill    = document.getElementById("cdFill");
+  var liveGrid  = document.getElementById("liveGrid");
+  var stagewrap = document.getElementById("stagewrap");
+  var meta      = document.getElementById("meta");
+  var badge     = document.getElementById("badge");
+  var title     = document.getElementById("roomTitle");
+  var sub       = document.getElementById("roomSub");
+  var chatBody  = document.getElementById("chatBody");
+  var stage     = document.getElementById("playerStage");
+  var soundBar  = document.getElementById("soundBar");
+
+  if (!cdStage || !liveGrid) return;
+
+  /* The booked start is mirrored into localStorage as well as sessionStorage.
+     Someone clicking the confirmation email arrives in a fresh browser session
+     where sessionStorage is already gone, and without this they look like a
+     brand new visitor and get handed a second countdown. */
+  function readStart(){
+    var v = 0;
+    try { v = parseInt(sessionStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {}
+    if (!v) { try { v = parseInt(localStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {} }
+    return v;
+  }
+  function rememberStart(t){
+    try { sessionStorage.setItem(SESSION_KEY, String(t)); } catch (e) {}
+    try { localStorage.setItem(SESSION_KEY, String(t)); } catch (e) {}
+  }
+
+  function pad(n){ return String(n).padStart(2, "0"); }
+  function fmt(ms){
+    var total = Math.max(0, Math.round(ms / 1000));
+    return pad(Math.floor(total / 60)) + ":" + pad(total % 60);
+  }
+
+  /* ---- Chat ------------------------------------------------------------- */
+  function addMessage(from, text, link){
+    var wrap = document.createElement("div");
+    var who  = document.createElement("div");
+    who.className = "msg-from";
+    who.textContent = from;
+    var body = document.createElement("div");
+    body.className = "msg-text";
+    body.textContent = text;          /* textContent, never innerHTML */
+    wrap.appendChild(who);
+    wrap.appendChild(body);
+    if (link){
+      var a = document.createElement("a");
+      a.className = "msg-link";
+      a.href = link.href;
+      a.textContent = link.label;
+      wrap.appendChild(a);
+    }
+    chatBody.appendChild(wrap);
+    chatBody.scrollTop = chatBody.scrollHeight;
+  }
+
+  var firedMessages = {};
+  function releaseDueMessages(seconds){
+    if (!chatBody) return;
+    for (var i = 0; i < HOST_MESSAGES.length; i++){
+      if (!firedMessages[i] && seconds >= HOST_MESSAGES[i].at){
+        firedMessages[i] = true;
+        addMessage(HOST_MESSAGES[i].from, HOST_MESSAGES[i].text, HOST_MESSAGES[i].link);
+      }
+    }
+  }
+
+  /* ---- Attendee identity ------------------------------------------------ */
+  /* Read lazily rather than at load, so attribution does not depend on script
+     order. Anyone arriving from the confirmation email is in a fresh browser
+     session with no stored attendee, so ?c=<contact id> is what identifies
+     them and keeps progress pings working on a return visit. */
+  function getAttendee(){
+    var a = {};
+    try { a = JSON.parse(sessionStorage.getItem(ATTENDEE_KEY) || "{}") || {}; } catch (e) {}
+    var cid = new URLSearchParams(window.location.search).get("c");
+    /* Ignore an unresolved merge field, e.g. ?c={{contact.id}} arriving
+       literally because the email editor did not substitute it. Passing that
+       through would send GHL an identifier matching nothing. */
+    if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
+    if (cid){
+      a.contact_id = cid;
+      try { sessionStorage.setItem(ATTENDEE_KEY, JSON.stringify(a)); } catch (e) {}
+    }
+    return a;
+  }
+
+  /* ---- Progress ---------------------------------------------------------- */
+  var MARKS = [
+    { at: 0.25, ev: "Masterclass25",       tag: "watched-25",       pct: 25 },
+    { at: 0.50, ev: "Masterclass50",       tag: "watched-50",       pct: 50 },
+    { at: 0.75, ev: "Masterclass75",       tag: "watched-75",       pct: 75 },
+    { at: 0.95, ev: "MasterclassComplete", tag: "watched-complete", pct: 100 }
+  ];
+  var firedMarks = {};
+  var watched = 0;
+
+  function fireMeta(name){
+    if (typeof fbq === "function"){
+      fbq("trackCustom", name, { content_name: "Scoliosis Masterclass", seconds_watched: Math.round(watched) });
+    }
+  }
+
+  /* One ping per milestone so the contact accumulates tags as they watch. The
+     tag name is sent ready-made, so the GHL workflow just applies it rather
+     than branching on a percentage. */
+  function pingProgress(tag, pct){
+    if (!GHL_PROGRESS_WEBHOOK) return;
+    var attendee = getAttendee();
+    /* Only send identifiers we actually have. An empty email reaching a
+       Create/Update Contact action matches nothing and creates a blank record. */
+    if (!attendee.email && !attendee.contact_id) return;
+    var payload = {
+      type: "masterclass_progress",
+      tag: tag,
+      percent: pct,
+      seconds_watched: Math.round(watched),
+      watched_at: new Date().toISOString()
+    };
+    if (attendee.contact_id) payload.contact_id = attendee.contact_id;
+    if (attendee.email)      payload.email      = attendee.email;
+    if (attendee.first_name) payload.first_name = attendee.first_name;
+    fetch(GHL_PROGRESS_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    }).catch(function(){});   /* best effort, never block the player */
+  }
+
+  function onProgress(seconds){
+    watched = seconds;
+    releaseDueMessages(watched);
+    for (var i = 0; i < MARKS.length; i++){
+      var m = MARKS[i];
+      if (!firedMarks[m.ev] && watched >= MASTERCLASS_SECONDS * m.at){
+        firedMarks[m.ev] = true;
+        fireMeta(m.ev);
+        pingProgress(m.tag, m.pct);
+      }
+    }
+  }
+
+  /* ---- Player ------------------------------------------------------------ */
+  /* Autoplay is only permitted while muted, and the click that got them here
+     happened on the previous page so it does not carry. The session starts
+     muted and running, with a prompt for sound.
+
+     This uses a real <video>, so progress is the video's own currentTime
+     rather than an estimate. If you swap in an embed, no player exposes that
+     cross-origin: fall back to counting seconds the tab is visible, and drive
+     onProgress from a setInterval instead. */
+  var video = null;
+
+  function buildPlayer(startAt){
+    video = document.createElement("video");
+    video.src = MASTERCLASS_SRC;
+    video.muted = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.preload = "auto";
+    video.setAttribute("controlslist", "nodownload");
+    video.addEventListener("loadedmetadata", function(){
+      if (startAt > 0 && startAt < video.duration) video.currentTime = startAt;
+    });
+    video.addEventListener("timeupdate", function(){ onProgress(video.currentTime); });
+    stage.insertBefore(video, soundBar);
+    video.play().catch(function(){
+      /* Even muted autoplay can be refused. Show controls so it is still
+         one tap away rather than a dead black box. */
+      video.controls = true;
+    });
+  }
+
+  function reveal(offsetSec){
+    offsetSec = Math.max(0, offsetSec || 0);
+    cdStage.hidden = true;
+    liveGrid.hidden = false;
+    meta.hidden = false;
+    stagewrap.classList.add("is-live");
+
+    buildPlayer(offsetSec);
+
+    soundBar.hidden = false;
+    soundBar.addEventListener("click", function(){
+      if (video){
+        video.muted = false;
+        video.controls = true;
+        video.play().catch(function(){});
+      }
+      soundBar.remove();
+    });
+
+    badge.classList.add("is-live");
+    badge.innerHTML = '<span class="dot"></span>Live Now';
+
+    var late = offsetSec > 30;
+    title.innerHTML = late ? 'Your Masterclass Is <em>Under Way</em>' : 'Your Masterclass Is <em>Ready</em>';
+    sub.textContent = late
+      ? "You have joined a session already in progress. Tap the button on the video for sound."
+      : "Your session is running. Tap the button on the video for sound.";
+
+    fireMeta("MasterclassStart");
+    pingProgress("watched-start", 0);
+    releaseDueMessages(offsetSec);
+  }
+
+  /* ---- Which state are we in? -------------------------------------------- */
+  /* A start time in the past means they are late, not that they need a fresh
+     one. Arriving at 7:02 for a 7:00 session drops them two minutes in and
+     running, exactly as a live call would. Only once they are past
+     LATE_JOIN_MAX_MS is that session written off and a new one started.
+     Nothing stored at all means the browser lost the booking rather than that
+     no booking was made, so the session opens now instead of restarting a wait
+     they have already sat through. */
+  var now = Date.now();
+  var target = readStart();
+
+  if (target - now > SLOT_MS) target = 0;
+  if (!target || now - target > LATE_JOIN_MAX_MS){
+    target = now;
+    rememberStart(target);
+  }
+
+  if (target <= now){
+    reveal((now - target) / 1000);
+    return;
+  }
+
+  var span = Math.max(1, target - now);
+  var timer = setInterval(tick, 1000);
+  tick();
+
+  function tick(){
+    var remaining = target - Date.now();
+    if (remaining <= 0){
+      clearInterval(timer);
+      reveal(0);
+      return;
+    }
+    cdBig.textContent = fmt(remaining);
+    cdFill.style.width = Math.min(100, ((span - remaining) / span) * 100) + "%";
+  }
+})();
+</script>

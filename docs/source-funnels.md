@@ -17,6 +17,7 @@ FAQ videos live. It is the best source of existing media for this brand.
 |---|---|
 | Workshop registration | https://www.goldenkeypropertyco.com/uk-workshop/ |
 | Workshop confirmation | https://www.goldenkeypropertyco.com/uk-workshop/confirmation |
+| Workshop live room | https://www.goldenkeypropertyco.com/uk-workshop/live |
 
 Golden Key Property is a UK property investment funnel, a completely different
 industry. It is used here for **structure and copy rhythm only**, never for
@@ -28,6 +29,15 @@ claims. What was worth taking:
 - Discovery bullets that carry numbers, timeframes and a cost of inaction.
 - A qualification section that tells the wrong people to leave.
 - A confirmation page built around a live countdown, not a thank-you message.
+- A live room that continues the countdown rather than restarting it, drops
+  late arrivals into the session in progress, and starts muted with a prompt
+  for sound.
+- Watch-progress milestones fired as CRM tags, so an engaged lead is
+  distinguishable from a browser.
+
+One thing worth copying verbatim is a decision, not a pattern: their live chat
+carries no scripted attendee messages, and their source says why. The same
+applies here with more force, because this is a medical offer.
 
 What did not transfer: the financial risk warning became a medical disclaimer,
 and the yield figures have no equivalent worth inventing.

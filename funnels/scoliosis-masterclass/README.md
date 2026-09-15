@@ -7,6 +7,7 @@ static host.
 |---|---|
 | `registration.html` | `watch.mybackhub.com/sc-masterclass-registration` |
 | `confirmation.html` | `watch.mybackhub.com/thank-you-sc-masterclass` |
+| `live.html` | New. There is no equivalent on the live funnel. |
 
 Structure and copy rhythm follow the Golden Key workshop funnel. See
 [../../docs/source-funnels.md](../../docs/source-funnels.md).
@@ -32,13 +33,52 @@ Structure and copy rhythm follow the Golden Key workshop funnel. See
 - Post-session "Book A Call" call-to-action.
 - Dr. Mike's welcome video carried across from the current page.
 
+## Live room
+
+The waiting room and session player. Modelled on Golden Key's `/uk-workshop/live`.
+
+- Continues the countdown the confirmation page started rather than beginning a
+  second one. The start time is written to both `sessionStorage` and
+  `localStorage` under `mbhMasterclassStart`, because someone clicking the
+  joining link from their email arrives in a fresh browser session.
+- Late arrivals are dropped into the session already in progress, the way they
+  would be on a real live call. Past `LATE_JOIN_MAX_MS` they have missed too
+  much to follow it and get a fresh session from the top.
+- Starts muted with a "Tap for sound" prompt, because browsers only permit
+  autoplay while muted and the click that got them here does not carry across
+  the page load.
+- Host chat feed timed to seconds watched, so it stays in step whether someone
+  joins late or switches tabs.
+- Watch-progress milestones at 25 / 50 / 75 / 95 percent, fired to a Meta pixel
+  if one is present and to a GHL inbound webhook.
+
+**The chat is host-only by design.** There are no scripted attendee messages.
+Inventing patients who say a treatment worked is not something to ship on a
+medical offer. Real questions go to the live Q&A at the end.
+
+### Three constants to set
+
+At the top of the script in `live.html`:
+
+| Constant | Currently | Set to |
+|---|---|---|
+| `MASTERCLASS_SRC` | Dr. Mike's welcome video, as a testable stand-in | The real masterclass recording |
+| `MASTERCLASS_SECONDS` | `99`, the stand-in's length | `35 * 60` |
+| `GHL_PROGRESS_WEBHOOK` | Empty, so pings are a no-op | Your own inbound webhook |
+
+`GHL_PROGRESS_WEBHOOK` is deliberately empty rather than copied from the
+reference funnel. Pointing it at another brand's hook would post your
+attendees into their CRM.
+
 ## Before launch
 
 - [ ] Wire `#regForm` to the LeadConnector/GHL endpoint and repoint the success
       state at the real session room. It is front-end only right now.
 - [ ] Set both countdowns to the true session cadence. They currently roll to
       the next `:00` or `:30`.
-- [ ] Repoint placeholder links: waiting room, join, Book A Call, footer nav.
+- [ ] Set `LIVE_ROOM_URL` in `confirmation.html` if the waiting room is not at
+      `live.html`, and repoint Book A Call and the footer nav on every page.
+- [ ] Set the three `live.html` constants above.
 - [ ] Remove the build note from the footer of each page.
 - [ ] Reconcile brand tokens against the brand guidelines.
       See [../../docs/brand-tokens.md](../../docs/brand-tokens.md).
