@@ -42,6 +42,16 @@ means generated output that is safe to delete and regenerate, which is the
 opposite of true here. The pages live in `funnels/`, and nothing in this repo
 is generated.
 
+## Hosted copies declare their own charset
+
+Every page in `funnels/` starts with `<meta charset="utf-8">`. GitHub Pages
+sends `charset=utf-8` in the response header, so the pages render correctly
+there without it, which is exactly why the omission goes unnoticed. Paste the
+same file into a builder that does not set the header, or open it over
+`file://`, and every curly quote, arrow and degree sign turns to mojibake.
+
+The Artifact copies do not carry it: that skeleton injects its own.
+
 ## Media and the CDN
 
 The published pages stream video from the client's existing filesafe CDN, not

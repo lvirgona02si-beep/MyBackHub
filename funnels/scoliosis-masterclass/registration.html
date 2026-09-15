@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Scoliosis Masterclass Registration</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
 <style>
@@ -71,11 +72,11 @@
   h1{font-size:clamp(31px,4.35vw,52px); font-weight:800; color:#fff; letter-spacing:-.028em; line-height:1.06}
   h1 em{font-style:normal; color:var(--teal-lt)}
   .bubble{
-    display:inline-block;
+    display:block;
     font-family:var(--f-display); font-weight:800; font-size:clamp(13.5px,1.2vw,16px);
     line-height:1.3; letter-spacing:.07em; text-transform:uppercase; color:#FFB3AC;
     background:rgba(255,95,82,.12); border-left:3px solid var(--coral);
-    border-radius:0 8px 8px 0; padding:11px 18px; margin-bottom:18px; max-width:38ch;
+    border-radius:0 8px 8px 0; padding:13px 20px; margin-bottom:20px;
   }
   h1 .warn{color:var(--coral); letter-spacing:-.01em}
   .hero .dek{margin-top:22px; font-size:clamp(17px,1.35vw,19px); color:#A9C4C8; max-width:60ch}
@@ -152,8 +153,13 @@
 
   /* ---------- Stat strip ---------- */
   .stats{background:var(--paper); border-block:1px solid var(--line)}
-  .stats .wrap{display:grid; grid-template-columns:repeat(4,1fr); padding-block:34px}
-  .stat{padding-inline:22px; border-left:1px solid var(--line)}
+  .stats .wrap{display:grid; grid-template-columns:repeat(3,1fr); padding-block:36px; gap:0}
+  .stat{padding-inline:26px; border-left:1px solid var(--line)}
+  .sicon{
+    width:46px; height:46px; border-radius:10px; margin-bottom:14px;
+    background:rgba(1,152,169,.1); border:1px solid rgba(57,161,178,.35);
+    display:flex; align-items:center; justify-content:center;
+  }
   .stat:first-child{border-left:0; padding-left:0}
   .stat .n{font-family:var(--f-display); font-size:clamp(25px,2.7vw,33px); font-weight:800; color:var(--teal-dk); letter-spacing:-.03em; line-height:1}
   .stat .t{margin-top:7px; font-size:14.5px; color:var(--muted); line-height:1.4}
@@ -171,9 +177,13 @@
 
   /* ---------- Discover list ---------- */
   .disc{list-style:none; margin:0; padding:0; display:grid; gap:2px}
-  .disc li{display:grid; grid-template-columns:34px 1fr; gap:16px; align-items:start; padding:18px 0; border-bottom:1px solid var(--line)}
+  .disc li{display:grid; grid-template-columns:32px 1fr; gap:17px; align-items:start; padding:19px 0; border-bottom:1px solid var(--line)}
   .disc li:first-child{border-top:1px solid var(--line)}
-  .vert{margin-top:2px}
+  .vert{
+    width:32px; height:32px; border-radius:9px; margin-top:1px; flex:none;
+    background:rgba(1,152,169,.1); border:1px solid rgba(57,161,178,.35);
+    display:flex; align-items:center; justify-content:center;
+  }
   .disc b{color:var(--ink); font-weight:700; font-family:var(--f-display); letter-spacing:-.01em}
   .disc span{display:block; font-size:17px}
 
@@ -277,9 +287,8 @@
     .host__fig{position:static; max-width:300px}
     .fit{grid-template-columns:1fr}
     .tgrid{grid-template-columns:repeat(2,1fr)}
-    .stats .wrap{grid-template-columns:1fr 1fr; gap:26px 0}
-    .stat{padding-inline:0 18px}
-    .stat:nth-child(3){border-left:0}
+    .stats .wrap{grid-template-columns:1fr; gap:26px}
+    .stat{padding-inline:0; border-left:0}
   }
   @media (max-width:620px){
     body{font-size:16.5px}
@@ -387,10 +396,9 @@
 <!-- ====================== STATS ====================== -->
 <div class="stats">
   <div class="wrap">
-    <div class="stat"><div class="n">25,000+</div><div class="t">People who’ve used this method to get out of pain</div></div>
-    <div class="stat"><div class="n">35 Minutes</div><div class="t">Plus a live Q&amp;A with Dr. Mike at the end</div></div>
-    <div class="stat"><div class="n">Zero Surgery</div><div class="t">Non-invasive and exercise-based, start to finish</div></div>
-    <div class="stat"><div class="n">$0</div><div class="t">Free to attend. There is nothing for sale.</div></div>
+    <div class="stat"><div class="sicon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="#02707C" stroke-width="1.8"/><path d="M3.4 19.6c0-3.1 2.5-5.2 5.6-5.2s5.6 2.1 5.6 5.2" stroke="#02707C" stroke-width="1.8" stroke-linecap="round"/><path d="M16.6 6.3a3.2 3.2 0 0 1 0 6" stroke="#02707C" stroke-width="1.8" stroke-linecap="round"/><path d="M17.6 14.8c2.1.6 3.5 2.4 3.5 4.8" stroke="#02707C" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="n">25,000+</div><div class="t">People who&rsquo;ve used this method to get out of pain</div></div>
+    <div class="stat"><div class="sicon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.8 4.2l4 4-9.3 9.3-4.6.6.6-4.6 9.3-9.3z" stroke="#02707C" stroke-width="1.8" stroke-linejoin="round"/><path d="M3.2 3.2l17.6 17.6" stroke="#FF5F52" stroke-width="2.2" stroke-linecap="round"/></svg></div><div class="n">Zero Surgery</div><div class="t">Non-invasive and exercise-based, start to finish</div></div>
+    <div class="stat"><div class="sicon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.4 3H4.6A1.6 1.6 0 0 0 3 4.6v6.8c0 .43.17.83.47 1.13l8.3 8.3a1.6 1.6 0 0 0 2.26 0l6.8-6.8a1.6 1.6 0 0 0 0-2.26l-8.3-8.3A1.6 1.6 0 0 0 11.4 3z" stroke="#02707C" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7.9" cy="7.9" r="1.5" fill="#02707C"/></svg></div><div class="n">$0</div><div class="t">Free to attend. There is nothing for sale.</div></div>
   </div>
 </div>
 
@@ -404,12 +412,12 @@
     </div>
 
     <ul class="disc">
-      <li><svg class="vert" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true"><path d="M11 6.5h12c2.9 0 5 2.2 5 5v7c0 2.8-2.1 5-5 5H11c-2.9 0-5-2.2-5-5v-7c0-2.8 2.1-5 5-5z" fill="#0198A9" fill-opacity=".13" stroke="#0198A9" stroke-width="1.5"/><path d="M6 12.5L1.6 9.8M6 17.5l-4.4 2.7M28 12.5l4.4-2.7M28 17.5l4.4 2.7" stroke="#0198A9" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="15" r="3.4" fill="#0198A9" fill-opacity=".55"/></svg><span><b>The 3 secrets to getting out of scoliosis pain.</b> The same three 25,000+ people have used, and why they hold whether your Cobb angle is 15° or 55°.</span></li>
-      <li><svg class="vert" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true"><path d="M11 6.5h12c2.9 0 5 2.2 5 5v7c0 2.8-2.1 5-5 5H11c-2.9 0-5-2.2-5-5v-7c0-2.8 2.1-5 5-5z" fill="#0198A9" fill-opacity=".13" stroke="#0198A9" stroke-width="1.5"/><path d="M6 12.5L1.6 9.8M6 17.5l-4.4 2.7M28 12.5l4.4-2.7M28 17.5l4.4 2.7" stroke="#0198A9" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="15" r="3.4" fill="#0198A9" fill-opacity=".55"/></svg><span><b>3 lies you’ve been told about scoliosis.</b> Starting with “monitor it and wait until it’s severe enough for surgery”, which can cost you a decade of mobility while you wait.</span></li>
-      <li><svg class="vert" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true"><path d="M11 6.5h12c2.9 0 5 2.2 5 5v7c0 2.8-2.1 5-5 5H11c-2.9 0-5-2.2-5-5v-7c0-2.8 2.1-5 5-5z" fill="#0198A9" fill-opacity=".13" stroke="#0198A9" stroke-width="1.5"/><path d="M6 12.5L1.6 9.8M6 17.5l-4.4 2.7M28 12.5l4.4-2.7M28 17.5l4.4 2.7" stroke="#0198A9" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="15" r="3.4" fill="#0198A9" fill-opacity=".55"/></svg><span><b>Why straight-spine therapy fails a curved spine.</b> The core work, symmetrical gym programmes and stretching apps you’ve already paid for treat the wrong thing entirely.</span></li>
-      <li><svg class="vert" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true"><path d="M11 6.5h12c2.9 0 5 2.2 5 5v7c0 2.8-2.1 5-5 5H11c-2.9 0-5-2.2-5-5v-7c0-2.8 2.1-5 5-5z" fill="#0198A9" fill-opacity=".13" stroke="#0198A9" stroke-width="1.5"/><path d="M6 12.5L1.6 9.8M6 17.5l-4.4 2.7M28 12.5l4.4-2.7M28 17.5l4.4 2.7" stroke="#0198A9" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="15" r="3.4" fill="#0198A9" fill-opacity=".55"/></svg><span><b>What 99% of doctors overlook.</b> Scoliosis doesn’t just bend, it rotates. Miss the rotation and you miss where the pain is actually coming from.</span></li>
-      <li><svg class="vert" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true"><path d="M11 6.5h12c2.9 0 5 2.2 5 5v7c0 2.8-2.1 5-5 5H11c-2.9 0-5-2.2-5-5v-7c0-2.8 2.1-5 5-5z" fill="#0198A9" fill-opacity=".13" stroke="#0198A9" stroke-width="1.5"/><path d="M6 12.5L1.6 9.8M6 17.5l-4.4 2.7M28 12.5l4.4-2.7M28 17.5l4.4 2.7" stroke="#0198A9" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="15" r="3.4" fill="#0198A9" fill-opacity=".55"/></svg><span><b>Why proper alignment is far easier than you think.</b> The daily sequence takes less time than the stretching routine you’re already doing, and you can start it the same day.</span></li>
-      <li><svg class="vert" width="34" height="30" viewBox="0 0 34 30" fill="none" aria-hidden="true"><path d="M11 6.5h12c2.9 0 5 2.2 5 5v7c0 2.8-2.1 5-5 5H11c-2.9 0-5-2.2-5-5v-7c0-2.8 2.1-5 5-5z" fill="#0198A9" fill-opacity=".13" stroke="#0198A9" stroke-width="1.5"/><path d="M6 12.5L1.6 9.8M6 17.5l-4.4 2.7M28 12.5l4.4-2.7M28 17.5l4.4 2.7" stroke="#0198A9" stroke-width="1.5" stroke-linecap="round"/><circle cx="17" cy="15" r="3.4" fill="#0198A9" fill-opacity=".55"/></svg><span><b>Whether this still applies to you.</b> Over 40, a severe curve, already fused, or decades past diagnosis. Answered directly, with no hedging.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>The 3 secrets to getting out of scoliosis pain.</b> The same three 25,000+ people have used, and why they hold whether your Cobb angle is 15° or 55°.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>3 lies you’ve been told about scoliosis.</b> Starting with “monitor it and wait until it’s severe enough for surgery”, which can cost you a decade of mobility while you wait.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Why straight-spine therapy fails a curved spine.</b> The core work, symmetrical gym programmes and stretching apps you’ve already paid for treat the wrong thing entirely.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>What 99% of doctors overlook.</b> Scoliosis doesn’t just bend, it rotates. Miss the rotation and you miss where the pain is actually coming from.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Why proper alignment is far easier than you think.</b> The daily sequence takes less time than the stretching routine you’re already doing, and you can start it the same day.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Whether this still applies to you.</b> Over 40, a severe curve, already fused, or decades past diagnosis. Answered directly, with no hedging.</span></li>
     </ul>
   </div>
 </section>
