@@ -11,6 +11,27 @@
 The pre-call FAQ page is where the six video testimonials and the fourteen
 FAQ videos live. It is the best source of existing media for this brand.
 
+## Copy reference
+
+| Page | URL |
+|---|---|
+| Duplex Invest free ebook | https://offer.duplexes.com.au/free-ebook/ |
+
+The original of the template Golden Key is built on. Its hero is four moves in
+order, and the registration page now runs the same four:
+
+1. **An eyebrow bubble that frames the authority as breaking ranks.**
+   "PROPERTY MOGUL UNDER FIRE FOR PUBLISHING INSIDER-ONLY REPORT:"
+2. **A WARNING headline that interrupts a decision**, in the shape
+   *don't do X until you see how Y*, carrying a specific number.
+3. **A "forget about / discover how" subhead** that names the alternatives
+   being rejected before naming the method.
+4. **Four stat callouts** immediately under.
+
+Duplex marks its numeric claims with an asterisk and a disclaimer. Nothing on
+the scoliosis build carries an asterisked claim, because every figure used
+(25,000+, 35 minutes, free) is one MyBackHub already publishes.
+
 ## Structural reference
 
 | Page | URL |
