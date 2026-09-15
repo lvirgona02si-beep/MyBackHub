@@ -398,9 +398,32 @@
   var isJit = choice.jit !== false && (target - now) <= (SLOT_MS + MIN_LEAD_MS);
   var ends  = new Date(target + SESSION_MINUTES * 60000);
 
-  /* Carry ?c=<contact id> through, so identity survives the hop to the room. */
-  var cid = new URLSearchParams(window.location.search).get("c");
-  if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
+  /* Carry the contact id through, so identity survives the hop to the room.
+     The URL wins; otherwise fall back to what registration stored. On a cold
+     registration there is no id at all, because GHL mints it server-side and
+     the inbound webhook returns only a status. The room falls back to the
+     stored email in that case, which is why progress still tracks. */
+  function contactId(){
+    var c = new URLSearchParams(window.location.search).get("c");
+    if (c && /[{}]/.test(decodeURIComponent(c))) c = null;
+    if (c){
+      try {
+        var raw = sessionStorage.getItem(ATTENDEE_KEY) || localStorage.getItem(ATTENDEE_KEY) || "";
+        var a = JSON.parse(raw || "{}") || {};
+        a.contact_id = c;
+        var j = JSON.stringify(a);
+        try { sessionStorage.setItem(ATTENDEE_KEY, j); } catch (e) {}
+        try { localStorage.setItem(ATTENDEE_KEY, j); } catch (e) {}
+      } catch (e) {}
+      return c;
+    }
+    try {
+      var r = sessionStorage.getItem(ATTENDEE_KEY) || localStorage.getItem(ATTENDEE_KEY) || "";
+      return (JSON.parse(r || "{}") || {}).contact_id || "";
+    } catch (e) { return ""; }
+  }
+
+  var cid = contactId();
   var liveUrl = LIVE_ROOM_URL + (cid ? (LIVE_ROOM_URL.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid) : "");
 
   document.getElementById("joinEarly").href = liveUrl;

@@ -111,6 +111,36 @@ from confirmation to the room to the booking link, but it has to start there.
 
 ---
 
+## Where contact_id comes from
+
+Short version: **on a cold registration there is no contact id, and there
+cannot be.** GHL mints it server-side, and the inbound webhook returns only
+`{"status":"Success…"}`. The browser never learns it.
+
+So identity travels two ways:
+
+| Path | Identifier | Link carries `?c=` |
+|---|---|---|
+| Cold registration, same session | `email`, from stored `mbhAttendee` | No, and that is correct |
+| Arrived from a GHL email with `?c={{contact.id}}` | `contact_id` | Yes, forwarded at every hop |
+
+Progress pings accept **either**, which is why watch tracking still works on a
+cold registration despite the join link having no `?c=`.
+
+Each page now reads the URL first and falls back to the stored attendee record,
+so once an id enters the funnel by any route it is carried to the end:
+registration to confirmation to the room to the booking link. Registration also
+sends `contact_id` in its payload when it has one, so the workflow updates that
+contact rather than creating a duplicate.
+
+Unsubstituted merge fields are rejected: a literal `{{contact.id}}` arriving
+because the email editor failed to substitute is discarded rather than sent.
+
+**If you want `?c=` on the join link for a cold registration**, the CRM has to
+hand the id back. Either have the registration workflow respond with the
+contact id and I will read it from the webhook response, or send people to the
+room through the emailed joining link rather than the in-page button.
+
 ## Debugging
 
 `DEBUG_REGISTRATION` in `registration.html` and `DEBUG_PINGS` in `live.html`

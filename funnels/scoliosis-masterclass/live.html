@@ -302,11 +302,20 @@
 
   var BOOKING_URL = "#";
 
-  /* Carry ?c=<contact id> onward so identity survives the hop to booking. */
+  /* Carry the contact id onward so identity survives the hop to booking. Reads
+     the URL first, then whatever the earlier pages stored, so the link still
+     carries it when someone arrived through the funnel rather than an email. */
   function withContact(url){
+    if (url === "#") return url;
     var cid = new URLSearchParams(window.location.search).get("c");
     if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
-    if (!cid || url === "#") return url;
+    if (!cid){
+      try {
+        var raw = sessionStorage.getItem("mbhAttendee") || localStorage.getItem("mbhAttendee") || "";
+        cid = (JSON.parse(raw || "{}") || {}).contact_id || "";
+      } catch (e) { cid = ""; }
+    }
+    if (!cid) return url;
     return url + (url.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid);
   }
 

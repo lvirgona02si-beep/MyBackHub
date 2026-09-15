@@ -869,6 +869,26 @@
      the CRM fires Lead today, but it must carry this id: the moment a
      browser-side event is added, the same id on both is what stops Ads Manager
      counting the lead twice. */
+  /* A known contact can arrive here from an email with ?c={{contact.id}}. GHL
+     mints the id server-side and the inbound webhook returns only a status, so
+     this is the only way the browser ever learns it. Capture it, send it so the
+     workflow updates rather than creates, and carry it to the next page. */
+  function contactId(){
+    var cid = new URLSearchParams(window.location.search).get("c");
+    /* Reject an unsubstituted merge field arriving literally. */
+    if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
+    if (cid) return cid;
+    try {
+      var raw = sessionStorage.getItem(ATTENDEE_KEY) || localStorage.getItem(ATTENDEE_KEY) || "";
+      return (JSON.parse(raw || "{}") || {}).contact_id || "";
+    } catch (e) { return ""; }
+  }
+
+  function withContact(url, cid){
+    if (!cid) return url;
+    return url + (url.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid);
+  }
+
   function eventId(){
     return "mbh-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 10);
   }
@@ -904,12 +924,14 @@
     err.style.display = "none";
     submit.disabled = true;
 
+    var cid = contactId();
     var attendee = {
       first_name: document.getElementById("fname").value.trim(),
       last_name:  document.getElementById("lname").value.trim(),
       email:      document.getElementById("email").value.trim(),
       phone:      document.getElementById("phone").value.trim()
     };
+    if (cid) attendee.contact_id = cid;
     write(ATTENDEE_KEY, JSON.stringify(attendee));
     saveChoice();
 
@@ -939,6 +961,10 @@
 
       market: MARKET,
       funnel_type: "Masterclass",
+
+      /* Present only when a known contact arrived with ?c=. Empty on a cold
+         registration, where GHL creates the contact from this payload. */
+      contact_id: cid,
 
       /* Meta match signals. Empty strings until the pixel is live. */
       event_id: eventId(),
@@ -970,7 +996,7 @@
       document.getElementById("formWrap").hidden = true;
       document.getElementById("doneWrap").hidden = false;
       document.getElementById("doneWrap").scrollIntoView({ block: "center", behavior: "smooth" });
-      setTimeout(function(){ window.location.href = CONFIRMATION_URL; }, 1800);
+      setTimeout(function(){ window.location.href = withContact(CONFIRMATION_URL, cid); }, 1800);
     }).catch(function(e){
       /* A blocked request lands here with no detail. The usual cause is opening
          this page somewhere that forbids outbound requests, such as a preview
