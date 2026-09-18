@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Masterclass Seat Confirmed</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap">
 <style>
@@ -153,7 +154,7 @@
   .bottom{background:var(--deep); color:#A9C4C8; text-align:center; padding-block:clamp(46px,6vw,72px)}
   .bottom h2{color:#fff; font-size:clamp(25px,3.1vw,37px); font-weight:800}
   .bottom p{max-width:54ch; margin:15px auto 26px; font-size:17.5px}
-  .cta-note{margin-top:16px; font-family:var(--f-display); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--teal-lt)}
+  .bottom .cta-note{margin:16px 0 0; max-width:none; font-family:var(--f-display); font-size:12px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--teal-lt)}
 
   /* ---------- Footer ---------- */
   footer{background:#041D22; color:#7C979B; padding-block:40px 30px; font-size:14px}
@@ -170,7 +171,9 @@
     body{font-size:16.5px}
     .checklist{grid-template-columns:1fr; gap:20px}
     .frow{flex-direction:column; align-items:flex-start}
-    .fnav{gap:12px}
+    .fnav{gap:4px 18px}
+    .fnav a{padding-block:6px; font-size:14px}
+    .bottom .cta-note{font-size:11px; letter-spacing:.08em}
     .btn{width:100%; padding-inline:20px}
   }
   @media (prefers-reduced-motion:reduce){

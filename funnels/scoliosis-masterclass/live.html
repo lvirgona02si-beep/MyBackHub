@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Masterclass Live Room</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
 <style>
@@ -167,7 +168,7 @@
   }
   .btn:hover{background:#FF4F41; transform:translateY(1px); box-shadow:0 2px 0 var(--coral-dk)}
   .btn:active{transform:translateY(3px); box-shadow:0 0 0 var(--coral-dk)}
-  .cta-note{margin-top:15px; font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--teal-lt)}
+  .bottom .cta-note{margin:15px 0 0; max-width:none; font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--teal-lt)}
 
   /* ---------- Footer ---------- */
   footer{background:#031519; color:#6E8A8E; padding-block:36px 28px; font-size:13.5px}
@@ -188,6 +189,9 @@
     body{font-size:16.5px}
     .meta{gap:8px 18px}
     .frow{flex-direction:column; align-items:flex-start}
+    .fnav{gap:4px 18px}
+    .fnav a{padding-block:6px; font-size:14px}
+    .bottom .cta-note{font-size:11px; letter-spacing:.08em}
     .btn{width:100%; padding-inline:20px}
   }
   @media (prefers-reduced-motion:reduce){
