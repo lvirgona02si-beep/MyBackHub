@@ -153,14 +153,14 @@
 
   /* ---------- Stat strip ---------- */
   .stats{background:var(--paper); border-block:1px solid var(--line)}
-  .stats .wrap{display:grid; grid-template-columns:repeat(3,1fr); padding-block:36px; gap:0}
-  .stat{padding-inline:26px; border-left:1px solid var(--line)}
+  .stats .wrap{display:grid; grid-template-columns:repeat(2,minmax(0,340px)); justify-content:center; padding-block:36px; gap:0}
+  .stat{padding-inline:26px; border-left:1px solid var(--line); text-align:center}
   .sicon{
-    width:46px; height:46px; border-radius:10px; margin-bottom:14px;
+    width:46px; height:46px; border-radius:10px; margin:0 auto 14px;
     background:rgba(1,152,169,.1); border:1px solid rgba(57,161,178,.35);
     display:flex; align-items:center; justify-content:center;
   }
-  .stat:first-child{border-left:0; padding-left:0}
+  .stat:first-child{border-left:0}
   .stat .n{font-family:var(--f-display); font-size:clamp(25px,2.7vw,33px); font-weight:800; color:var(--teal-dk); letter-spacing:-.03em; line-height:1}
   .stat .t{margin-top:7px; font-size:14.5px; color:var(--muted); line-height:1.4}
 
@@ -398,7 +398,6 @@
   <div class="wrap">
     <div class="stat"><div class="sicon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="8" r="3.2" stroke="#02707C" stroke-width="1.8"/><path d="M3.4 19.6c0-3.1 2.5-5.2 5.6-5.2s5.6 2.1 5.6 5.2" stroke="#02707C" stroke-width="1.8" stroke-linecap="round"/><path d="M16.6 6.3a3.2 3.2 0 0 1 0 6" stroke="#02707C" stroke-width="1.8" stroke-linecap="round"/><path d="M17.6 14.8c2.1.6 3.5 2.4 3.5 4.8" stroke="#02707C" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="n">25,000+</div><div class="t">People who&rsquo;ve used this method to get out of pain</div></div>
     <div class="stat"><div class="sicon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15.8 4.2l4 4-9.3 9.3-4.6.6.6-4.6 9.3-9.3z" stroke="#02707C" stroke-width="1.8" stroke-linejoin="round"/><path d="M3.2 3.2l17.6 17.6" stroke="#FF5F52" stroke-width="2.2" stroke-linecap="round"/></svg></div><div class="n">Zero Surgery</div><div class="t">Non-invasive and exercise-based, start to finish</div></div>
-    <div class="stat"><div class="sicon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M11.4 3H4.6A1.6 1.6 0 0 0 3 4.6v6.8c0 .43.17.83.47 1.13l8.3 8.3a1.6 1.6 0 0 0 2.26 0l6.8-6.8a1.6 1.6 0 0 0 0-2.26l-8.3-8.3A1.6 1.6 0 0 0 11.4 3z" stroke="#02707C" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7.9" cy="7.9" r="1.5" fill="#02707C"/></svg></div><div class="n">$0</div><div class="t">Free to attend. There is nothing for sale.</div></div>
   </div>
 </div>
 
@@ -412,12 +411,12 @@
     </div>
 
     <ul class="disc">
-      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>The 3 secrets to getting out of scoliosis pain.</b> The same three 25,000+ people have used, and why they hold whether your Cobb angle is 15° or 55°.</span></li>
-      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>3 lies you’ve been told about scoliosis.</b> Starting with “monitor it and wait until it’s severe enough for surgery”, which can cost you a decade of mobility while you wait.</span></li>
-      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Why straight-spine therapy fails a curved spine.</b> The core work, symmetrical gym programmes and stretching apps you’ve already paid for treat the wrong thing entirely.</span></li>
-      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>What 99% of doctors overlook.</b> Scoliosis doesn’t just bend, it rotates. Miss the rotation and you miss where the pain is actually coming from.</span></li>
-      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Why proper alignment is far easier than you think.</b> The daily sequence takes less time than the stretching routine you’re already doing, and you can start it the same day.</span></li>
-      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3.6 10.4l4 4 8.8-8.9" stroke="#02707C" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span><b>Whether this still applies to you.</b> Over 40, a severe curve, already fused, or decades past diagnosis. Answered directly, with no hedging.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="#0198A9" stroke-width="3" stroke-linecap="round"/></svg></span><span><b>The 3 secrets to getting out of scoliosis pain.</b> The same three 25,000+ people have used, and why they hold whether your Cobb angle is 15° or 55°.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="#0198A9" stroke-width="3" stroke-linecap="round"/></svg></span><span><b>3 lies you’ve been told about scoliosis.</b> Starting with “monitor it and wait until it’s severe enough for surgery”, which can cost you a decade of mobility while you wait.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="#0198A9" stroke-width="3" stroke-linecap="round"/></svg></span><span><b>Why straight-spine therapy fails a curved spine.</b> The core work, symmetrical gym programmes and stretching apps you’ve already paid for treat the wrong thing entirely.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="#0198A9" stroke-width="3" stroke-linecap="round"/></svg></span><span><b>What 99% of doctors overlook.</b> Scoliosis doesn’t just bend, it rotates. Miss the rotation and you miss where the pain is actually coming from.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="#0198A9" stroke-width="3" stroke-linecap="round"/></svg></span><span><b>Why proper alignment is far easier than you think.</b> The daily sequence takes less time than the stretching routine you’re already doing, and you can start it the same day.</span></li>
+      <li><span class="vert"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="#0198A9" stroke-width="3" stroke-linecap="round"/></svg></span><span><b>Whether this still applies to you.</b> Over 40, a severe curve, already fused, or decades past diagnosis. Answered directly, with no hedging.</span></li>
     </ul>
   </div>
 </section>
@@ -604,26 +603,6 @@
       <details>
         <summary>Is this just a review of common stretches?</summary>
         <div class="ans">No. Common stretches are symmetrical, and that’s precisely what doesn’t work here. What we walk through is curve-specific and positional.</div>
-      </details>
-      <details>
-        <summary>What’s the next step? Do I have to buy something?</summary>
-        <div class="ans">Nothing is for sale during the masterclass. If you want help applying it afterwards, we’ll tell you how, but the 35 minutes stand on their own.</div>
-      </details>
-      <details>
-        <summary>How long is the masterclass?</summary>
-        <div class="ans">The masterclass will be around 35 minutes, followed by a Q&amp;A session where Dr. Mike will answer questions.</div>
-      </details>
-      <details>
-        <summary>Will there be a replay available?</summary>
-        <div class="ans">If you can’t attend, you can re-register for another session. Sessions run throughout the day.</div>
-      </details>
-      <details>
-        <summary>How can I join the masterclass?</summary>
-        <div class="ans">After signing up, you’ll receive a link to join the masterclass via email. Be sure to navigate to your inbox and click on the email from us when your session starts to join us live.</div>
-      </details>
-      <details>
-        <summary>Can I ask questions during the masterclass?</summary>
-        <div class="ans">Absolutely! Feel free to submit questions in the chat throughout the session. We’ll also set aside time for a dedicated Q&amp;A at the end.</div>
       </details>
     </div>
   </div>
