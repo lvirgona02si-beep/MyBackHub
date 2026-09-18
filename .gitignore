@@ -1,3 +1,12 @@
 .DS_Store
 *.log
 node_modules/
+
+# Source video masters. Too large for git (GitHub caps files at 100MB) and
+# they belong on the CDN, not in the repo.
+*.mp4
+!funnels/**/media/**/*.mp4
+/3 secrets scoliosis masterclass.mp4
+
+# Held out of the repo at the client's request, kept locally.
+_local/

@@ -39,16 +39,3 @@ weight, and `02` answers the objection the whole page is built around.
 
 Videos are 854x480 CDN transcodes. Posters are the CDN's own 1280x720 frames.
 
-## Checkout
-
-| File | Used on | CDN / source |
-|---|---|---|
-| `checkout/member-testimonials.mp4` | `checkout.html` | `697a98dd3f6f1815358f14a9` |
-| `checkout/member-testimonials.jpg` | poster frame | first frame of the above |
-| `checkout/scoliosis-solution-logo.png` | order summary | `69d821de019dc508d3d5ccaa` |
-| `checkout/product-stack.png` | not yet placed | `67d9dc429065218a9e28e6f3` |
-
-The original testimonial video is 1920x1080 and **121MB**, and the live
-checkout page serves it at full size. The copy here is 640x360 at 15MB. Upload
-it and repoint `checkout.html` before running traffic: a 121MB download on the
-page where people enter card details is a conversion problem, not a detail.
