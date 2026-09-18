@@ -275,7 +275,7 @@
     <p class="disclaim">
       <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.
     </p>
-    <p class="buildnote"><b>Build note (remove before launch):</b> set <code>EMBED_BASE</code> at the top of the script to your Vimeo or Tella embed URL and <code>PLAYER</code> to match. Until then the player shows a placeholder rather than a black box. The recording runs 37:48, so <code>MASTERCLASS_SECONDS</code> is 2268; the progress marks and the late-join cap derive from it. Four of the six <code>HOST_MESSAGES</code> are still PLACEHOLDER text and need timing against the real recording. Repoint the Book A Call links and footer nav too.</p>
+    <p class="buildnote"><b>Build note (remove before launch):</b> the Tella embed is connected. The recording runs 37:48, so <code>MASTERCLASS_SECONDS</code> is 2268; the progress marks and the late-join cap derive from it. Four of the six <code>HOST_MESSAGES</code> are still PLACEHOLDER text and need timing against the real recording. Repoint the Book A Call links and footer nav too.</p>
   </div>
 </footer>
 
@@ -295,8 +295,8 @@
 
      Leave it empty and the room shows a clear placeholder rather than a black
      box, so a missing URL is obvious instead of looking like a broken player. */
-  var EMBED_BASE = "";
-  var PLAYER     = "vimeo";        /* "vimeo" or "tella" */
+  var EMBED_BASE = "https://www.tella.tv/video/vid_cmu716b8d00ww0agmcmnbhava/embed";
+  var PLAYER     = "tella";        /* "vimeo" or "tella" */
 
   /* Real runtime of the recording: 37:48. Every progress mark and the late
      join cap are fractions of this, so it is the only number to change if the
@@ -617,8 +617,8 @@
     var f = document.createElement("iframe");
     f.src = embedSrc(muted, startAt);
     f.title = "Scoliosis Masterclass with Dr. Michael Gardner, MD";
-    f.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
-    f.setAttribute("allowfullscreen", "");
+    f.setAttribute("allow", "autoplay; fullscreen");
+    f.setAttribute("allowtransparency", "");
     stage.insertBefore(f, soundBar);
   }
 

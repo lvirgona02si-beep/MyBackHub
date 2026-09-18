@@ -6,20 +6,22 @@ wrong delivery method for a 38 minute session anyway.
 
 It goes on a video host. Vimeo or Tella, per the client's decision.
 
-## 1. Upload, then set two constants
+## 1. Connected
 
-At the top of the script in `live.html`:
+Hosted on Tella and wired:
 
 ```js
-var EMBED_BASE = "https://player.vimeo.com/video/123456789";  // no query string
-var PLAYER     = "vimeo";                                      // or "tella"
+var EMBED_BASE = "https://www.tella.tv/video/vid_cmu716b8d00ww0agmcmnbhava/embed";
+var PLAYER     = "tella";
 ```
 
 `EMBED_BASE` carries no query string. The page appends its own per state:
 muted or unmuted, and the start offset.
 
-While `EMBED_BASE` is empty the player shows a labelled placeholder rather than
-a black box, so a missing URL never looks like a broken player.
+`EMBED_BASE` carries no query string on purpose. Tella's own snippet hardcodes
+`muted=0&t=0`, which would defeat both the autoplay and the late join: browsers
+refuse unmuted autoplay, and a fixed `t=0` restarts the session from the top for
+everyone. The page supplies both per state instead.
 
 ## 2. The host must support seeking from the URL
 
