@@ -8,6 +8,7 @@ static host.
 | `registration.html` | `watch.mybackhub.com/sc-masterclass-registration` |
 | `confirmation.html` | `watch.mybackhub.com/thank-you-sc-masterclass` |
 | `live.html` | New. There is no equivalent on the live funnel. |
+| `checkout.html` | `payment.mybackhub.com/the-sc-masterclass-checkout` |
 
 Structure and copy rhythm follow the Golden Key workshop funnel. See
 [../../docs/source-funnels.md](../../docs/source-funnels.md).
@@ -100,9 +101,33 @@ record.
 The joining link in your email needs `?c={{contact.id}}` on it, or attendees
 arrive unidentified and no progress is recorded.
 
+## Checkout
+
+The low-ticket offer sold off the back of the masterclass: The Scoliosis
+Solution, six weeks of access, $99 at the masterclass price against $199
+normal and $905 stated value.
+
+- Order summary carries the full value stack, and the order bump (Scoliosis-Safe
+  Yoga and Breathing, $24.30) updates the total and the button live.
+- `currentTotal()` is the single source of the amount to charge. Read it when
+  confirming the payment intent rather than parsing the rendered text, so the
+  charge can never drift from a formatting change.
+
+**There is no card form, deliberately.** `#payment-element` is a mount point
+for Stripe's Payment Element or GoHighLevel's. Hand-built card fields put the
+page in PCI scope and are never the right answer; the processor's hosted fields
+keep card data off this page entirely.
+
+### The guarantee length contradicts itself
+
+The live page says **14 days** on its badge graphic and **30 days** in its FAQ,
+on the same screen. This build routes every mention through one constant,
+`GUARANTEE_DAYS`, currently 30. Confirm which is correct before launch: it is
+a refund term, so the wrong number is a chargeback argument waiting to happen.
+
 ## Before launch
 
-- [ ] Add the Meta pixel to all three pages. `fbq` is only called if already
+- [ ] Add the Meta pixel to all four pages. `fbq` is only called if already
       defined, so nothing breaks until then, and the Meta fields in the
       registration payload stay empty strings.
 - [ ] Fire `Lead` and `Schedule` server-side from the Conversions API, passing
