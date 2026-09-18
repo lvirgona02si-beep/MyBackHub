@@ -107,6 +107,14 @@
   }
   .player video,.player iframe{width:100%; height:100%; border:0; display:block; object-fit:cover}
 
+  .noembed{
+    position:absolute; inset:0; display:flex; flex-direction:column; gap:8px;
+    align-items:center; justify-content:center; text-align:center; padding:28px;
+    color:var(--on-dark-2); font-size:14.5px;
+  }
+  .noembed b{font-family:var(--f-display); font-size:17px; color:#fff}
+  .noembed code{background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px}
+
   .soundbar{
     position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:3;
     display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:0;
@@ -267,7 +275,7 @@
     <p class="disclaim">
       <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.
     </p>
-    <p class="buildnote"><b>Build note (remove before launch):</b> three constants at the top of the script need real values before this goes live: <code>MASTERCLASS_SRC</code> (currently Dr. Mike&rsquo;s welcome video as a testable stand-in), <code>MASTERCLASS_SECONDS</code> (set to the stand-in&rsquo;s length, put back to <code>35 * 60</code>), and <code>GHL_PROGRESS_WEBHOOK</code> (empty, so progress pings are a no-op until you paste your own inbound webhook). Repoint the Book A Call links and footer nav too.</p>
+    <p class="buildnote"><b>Build note (remove before launch):</b> set <code>EMBED_BASE</code> at the top of the script to your Vimeo or Tella embed URL and <code>PLAYER</code> to match. Until then the player shows a placeholder rather than a black box. The recording runs 37:48, so <code>MASTERCLASS_SECONDS</code> is 2268; the progress marks and the late-join cap derive from it. Four of the six <code>HOST_MESSAGES</code> are still PLACEHOLDER text and need timing against the real recording. Repoint the Book A Call links and footer nav too.</p>
   </div>
 </footer>
 
@@ -279,14 +287,22 @@
      CONFIGURE ME
      ========================================================================= */
 
-  /* TEMPORARY: Dr. Mike's welcome video, so the room is testable end to end.
-     Swap for the real masterclass recording before launch. If you move to an
-     embed (Vimeo, YouTube, GHL), see buildPlayer below. */
-  var MASTERCLASS_SRC = "https://assets.cdn.filesafe.space/wPy45DABxzg1naBrVAG8/media/transcoded_videos/cts-e6355af3cd1a8277_720p.mp4";
+  /* The masterclass embed. Set EMBED_BASE to the player URL with no query
+     string; the params are added per state below.
 
-  /* TEMPORARY: length of the stand-in above, so the progress marks fire where
-     they can actually be seen. Put this back to 35 * 60 for the real session. */
-  var MASTERCLASS_SECONDS = 99;
+       Vimeo   https://player.vimeo.com/video/123456789
+       Tella   https://www.tella.tv/video/vid_xxxxxxxx/embed
+
+     Leave it empty and the room shows a clear placeholder rather than a black
+     box, so a missing URL is obvious instead of looking like a broken player. */
+  var EMBED_BASE = "";
+  var PLAYER     = "vimeo";        /* "vimeo" or "tella" */
+
+  /* Real runtime of the recording: 37:48. Every progress mark and the late
+     join cap are fractions of this, so it is the only number to change if the
+     video is re-cut. The customer-facing copy says "around 35 minutes", which
+     is a promise rather than a measurement and is deliberately left alone. */
+  var MASTERCLASS_SECONDS = 2268;
 
   /* MyBackHub inbound webhook for masterclass watch progress. This receives
      only the progress payload below, so the workflow behind it cannot be
@@ -327,7 +343,7 @@
   /* Take sessions down for a day without touching the ads or the registration
      page. Mirrors the same flag on the confirmation page. */
   var SESSION_ON_HOLD = false;
-  var CONFIRMATION_URL = "confirmation.html";
+  var CONFIRMATION_URL = "https://claude.ai/artifact/CiczUVMvgLku6rhfG3UcUR";
 
   /* How late someone can arrive and still be dropped into a session already in
      progress, the way they would be on a real live call. Past this they have
@@ -520,8 +536,23 @@
     });   /* best effort, never block the player */
   }
 
-  function onProgress(seconds){
-    watched = seconds;   /* caller passes the new running total */
+  /* An embedded player exposes no playback position cross-origin, so this
+     measures *visible* time on the page instead. The timer only advances while
+     the tab is actually in view, which rules out someone leaving the room open
+     in a background tab and inflating the numbers. Without that, anyone who
+     opens the page and walks away gets tagged as having watched to the end, and
+     the one signal separating a buyer from a browser is worthless. */
+  var lastTick = null;
+
+  function engagementTick(){
+    var now = Date.now();
+    if (document.visibilityState === "visible"){
+      if (lastTick !== null) watched += (now - lastTick) / 1000;
+      lastTick = now;
+    } else {
+      lastTick = null;          /* paused while the tab is hidden */
+    }
+
     releaseDueMessages(watched);
     for (var i = 0; i < MARKS.length; i++){
       var m = MARKS[i];
@@ -533,50 +564,68 @@
     }
   }
 
+  /* `offsetSec` is how far into the session a late arrival joined. It seeds the
+     counter so the chat backlog is already there, the way it would be joining a
+     live call late. Marks that offset skipped past are recorded as fired but
+     never sent: they reached that point of the video, they did not watch it,
+     and tagging them for it would poison the signal. */
+  function startEngagementTracking(offsetSec){
+    watched = offsetSec;
+    for (var i = 0; i < MARKS.length; i++){
+      if (MASTERCLASS_SECONDS * MARKS[i].at <= offsetSec) firedMarks[MARKS[i].ev] = true;
+    }
+    fireMeta("MasterclassStart");
+    pingProgress("watched-start", 0);
+    releaseDueMessages(offsetSec);
+
+    lastTick = Date.now();
+    document.addEventListener("visibilitychange", function(){
+      lastTick = document.visibilityState === "visible" ? Date.now() : null;
+    });
+    setInterval(engagementTick, 1000);
+  }
+
   /* ---- Player ------------------------------------------------------------ */
   /* Autoplay is only permitted while muted, and the click that got them here
-     happened on the previous page so it does not carry. The session starts
-     muted and running, with a prompt for sound.
+     happened on the previous page so it does not carry as a user gesture. The
+     session therefore opens muted and already running, with a prompt for sound.
 
-     This uses a real <video>, so progress is the video's own currentTime
-     rather than an estimate. If you swap in an embed, no player exposes that
-     cross-origin: fall back to counting seconds the tab is visible, and drive
-     onProgress from a setInterval instead. */
-  var video = null;
-
-  function buildPlayer(startAt){
-    video = document.createElement("video");
-    video.src = MASTERCLASS_SRC;
-    video.muted = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    video.preload = "auto";
-    video.setAttribute("controlslist", "nodownload");
-    video.addEventListener("loadedmetadata", function(){
-      if (startAt > 0 && startAt < video.duration) video.currentTime = startAt;
-    });
-    /* Accumulate only the time the tab is actually in view. currentTime keeps
-       advancing in a backgrounded tab, so without this someone who opens the
-       room and walks away gets tagged as having watched to the end, and the
-       one signal separating a buyer from a browser is worthless. */
-    var lastSeen = null;
-    video.addEventListener("timeupdate", function(){
-      var t = video.currentTime;
-      if (document.visibilityState === "visible" && lastSeen !== null && t > lastSeen){
-        onProgress(watched + (t - lastSeen));
-      }
-      lastSeen = t;
-    });
-    document.addEventListener("visibilitychange", function(){
-      if (document.visibilityState !== "visible") lastSeen = null;
-    });
-    stage.insertBefore(video, soundBar);
-    video.play().catch(function(){
-      /* Even muted autoplay can be refused. Show controls so it is still
-         one tap away rather than a dead black box. */
-      video.controls = true;
-    });
+     The start offset is what makes late joining work: whatever host you use
+     must support seeking from the URL. Vimeo and Tella both do. Check this
+     before committing to a host, because without it the whole premise of
+     dropping someone into a session in progress collapses. */
+  function embedSrc(muted, startAt){
+    var t = Math.max(0, Math.round(startAt));
+    if (PLAYER === "tella"){
+      return EMBED_BASE + "?b=0&title=0&a=1&loop=0&wt=0&o=0" +
+             "&muted=" + (muted ? 1 : 0) + "&t=" + t;
+    }
+    /* Vimeo takes the offset as a media fragment, not a query param. */
+    return EMBED_BASE + "?autoplay=1&title=0&byline=0&portrait=0&badge=0&dnt=1" +
+           "&muted=" + (muted ? 1 : 0) + "#t=" + t + "s";
   }
+
+  function buildPlayer(muted, startAt){
+    if (!EMBED_BASE){
+      stage.insertAdjacentHTML("afterbegin",
+        '<div class="noembed"><b>No video connected</b>' +
+        '<span>Set <code>EMBED_BASE</code> at the top of this page to your Vimeo or Tella embed URL.</span></div>');
+      return;
+    }
+    var old = stage.querySelector("iframe");
+    if (old) old.remove();
+    var f = document.createElement("iframe");
+    f.src = embedSrc(muted, startAt);
+    f.title = "Scoliosis Masterclass with Dr. Michael Gardner, MD";
+    f.setAttribute("allow", "autoplay; fullscreen; picture-in-picture");
+    f.setAttribute("allowfullscreen", "");
+    stage.insertBefore(f, soundBar);
+  }
+
+  /* Wall-clock time of video position zero. Storing this rather than a counter
+     means the rebuild on unmute lands where they actually are, no matter how
+     long they took to tap. */
+  var sessionOpenedAt = 0;
 
   function reveal(offsetSec){
     offsetSec = Math.max(0, offsetSec || 0);
@@ -585,17 +634,17 @@
     meta.hidden = false;
     stagewrap.classList.add("is-live");
 
-    buildPlayer(offsetSec);
+    sessionOpenedAt = Date.now() - offsetSec * 1000;
+    buildPlayer(true, offsetSec);
 
-    soundBar.hidden = false;
-    soundBar.addEventListener("click", function(){
-      if (video){
-        video.muted = false;
-        video.controls = true;
-        video.play().catch(function(){});
-      }
-      soundBar.remove();
-    });
+    if (EMBED_BASE){
+      soundBar.hidden = false;
+      soundBar.addEventListener("click", function(){
+        /* Rebuild unmuted at the point they had reached, not from the top. */
+        buildPlayer(false, (Date.now() - sessionOpenedAt) / 1000);
+        soundBar.remove();
+      });
+    }
 
     badge.classList.add("is-live");
     badge.innerHTML = '<span class="dot"></span>Live Now';
@@ -606,17 +655,7 @@
       ? "You have joined a session already in progress. Tap the button on the video for sound."
       : "Your session is running. Tap the button on the video for sound.";
 
-    /* Seed the counter so the chat backlog is already there, the same way it
-       would be joining a live call late. Marks the offset skipped past are
-       recorded as fired but never sent: they reached that point of the video,
-       they did not watch it, and tagging them would poison the signal. */
-    watched = offsetSec;
-    for (var i = 0; i < MARKS.length; i++){
-      if (MASTERCLASS_SECONDS * MARKS[i].at <= offsetSec) firedMarks[MARKS[i].ev] = true;
-    }
-    fireMeta("MasterclassStart");
-    pingProgress("watched-start", 0);
-    releaseDueMessages(offsetSec);
+    startEngagementTracking(offsetSec);
   }
 
   /* ---- Which state are we in? -------------------------------------------- */
