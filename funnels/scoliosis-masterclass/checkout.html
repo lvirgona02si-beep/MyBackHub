@@ -169,7 +169,6 @@
   .fnav a:hover{color:#fff; text-decoration:underline}
   .disclaim{margin-top:17px; font-size:12.5px; line-height:1.65; color:#5A767A}
   .disclaim b{color:#8FAAAE}
-  .buildnote{margin-top:16px; padding:11px 14px; border:1px dashed var(--line-dk); border-radius:8px; font-size:12.5px; color:#6E8A8E}
 
   @media (max-width:940px){
     .grid{grid-template-columns:1fr}
@@ -382,7 +381,6 @@
     <p class="disclaim" style="margin-top:16px">&copy; 2026 The Scoliosis Solution&reg;. All rights reserved.</p>
     <p class="disclaim">For informational purposes only. Not intended to be a substitute for professional medical advice. Talk with your healthcare provider about any questions you may have regarding a medical situation. Names, likenesses, and stories may be altered and/or aggregated for clarity and/or identity protection.</p>
     <p class="disclaim"><b>Medical disclaimer:</b> This program is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Always consult your physician before beginning any exercise programme, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.</p>
-    <p class="buildnote"><b>Build note (remove before launch):</b> the payment area is a mount point, not a form. Card fields are never hand-built; mount your Stripe or GoHighLevel payment element into <code>#payment-element</code> and wire <code>#buy</code> to confirm the payment intent with the total from <code>currentTotal()</code>. <b>The guarantee length needs confirming:</b> the current live page says 14 days on its badge graphic and 30 days in its FAQ. This page uses one constant, <code>GUARANTEE_DAYS</code>, currently set to 30. The testimonial video streams the 121MB original from your storage bucket, which is far too heavy for a checkout page; a 640x360 copy is in media/ ready to upload. Also repoint the footer links.</p>
   </div>
 </footer>
 
