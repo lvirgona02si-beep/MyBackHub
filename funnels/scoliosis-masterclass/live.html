@@ -102,10 +102,10 @@
   .cd-note{font-size:14.5px; color:var(--on-dark-2)}
 
   /* ---------- Live grid ---------- */
-  /* Video left, chat right. While counting down the countdown sits under the
-     video and the chat runs the full height beside both. */
+  /* Video left, chat right, the chat exactly the video's height. While counting
+     down, the countdown runs the full width underneath both. */
   .live{display:grid; grid-template-columns:minmax(0,1fr) 340px; grid-template-areas:"player chat"; gap:20px; align-items:stretch}
-  .live.is-waiting{grid-template-areas:"player chat" "cd chat"}
+  .live.is-waiting{grid-template-areas:"player chat" "cd cd"}
   .player{
     grid-area:player; position:relative; aspect-ratio:16/9; max-width:100%; border-radius:var(--r); overflow:hidden;
     background:#041D22; border:1px solid var(--line-dk); box-shadow:0 26px 70px rgba(0,0,0,.5);
@@ -152,7 +152,8 @@
   /* ---------- Chat ---------- */
   .chat{
     grid-area:chat; background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
-    display:flex; flex-direction:column; overflow:hidden; text-align:left; min-height:300px;
+    display:flex; flex-direction:column; overflow:hidden; text-align:left;
+    contain:size;   /* the video sets the row height; messages scroll inside */
   }
   .chat-head{
     padding:13px 16px; border-bottom:1px solid rgba(255,255,255,.1);
@@ -191,7 +192,7 @@
   @media (max-width:900px){
     .live{grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "chat"}
     .live.is-waiting{grid-template-areas:"player" "cd" "chat"}
-    .chat{min-height:260px; max-height:360px}
+    .chat{contain:none; min-height:260px; max-height:360px}
   }
   @media (max-width:620px){
     .poster{gap:12px; padding:16px}
