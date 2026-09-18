@@ -49,6 +49,8 @@
 
   .wrap{width:100%; max-width:1180px; margin-inline:auto; padding-inline:20px}
 
+  [hidden]{display:none !important}
+
   /* ---------- Header ---------- */
   .top{background:#041D22; padding-block:16px; border-bottom:1px solid rgba(255,255,255,.08)}
   .top .wrap{display:flex; align-items:center; justify-content:center}
@@ -78,35 +80,55 @@
   h1 em{font-style:normal; color:var(--teal-lt)}
   .room-sub{margin:15px auto 0; max-width:56ch; font-size:17px; color:var(--on-dark-2)}
 
-  .stagewrap{max-width:900px; margin:clamp(26px,3.4vw,38px) auto 0; transition:max-width .35s ease}
-  .stagewrap.is-live{max-width:1180px}
+  .stagewrap{max-width:1180px; margin:clamp(26px,3.4vw,38px) auto 0}
 
   /* ---------- Countdown ---------- */
   .cd{
+    grid-area:cd;
     background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
-    padding:clamp(38px,5.5vw,62px) clamp(20px,3vw,32px);
-    box-shadow:0 26px 70px rgba(0,0,0,.45);
+    padding:clamp(22px,3vw,30px) clamp(20px,3vw,32px);
   }
   .cd-label{
     display:block; font-family:var(--f-display); font-size:11px; font-weight:800;
     letter-spacing:.21em; text-transform:uppercase; color:var(--on-dark-2); margin-bottom:14px;
   }
   .cd-time{
-    font-family:var(--f-display); font-size:clamp(52px,10.5vw,100px); font-weight:800;
+    font-family:var(--f-display); font-size:clamp(44px,6vw,64px); font-weight:800;
     color:#fff; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums;
-    margin-bottom:26px;
+    margin-bottom:18px;
   }
-  .cd-bar{height:6px; border-radius:100px; background:rgba(255,255,255,.1); overflow:hidden; max-width:420px; margin:0 auto 18px}
+  .cd-bar{height:6px; border-radius:100px; background:rgba(255,255,255,.1); overflow:hidden; max-width:420px; margin:0 auto 14px}
   .cd-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--teal) 0%,var(--teal-lt) 100%); transition:width 1s linear}
   .cd-note{font-size:14.5px; color:var(--on-dark-2)}
 
   /* ---------- Live grid ---------- */
-  .live{display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:stretch}
+  /* Video left, chat right. While counting down the countdown sits under the
+     video and the chat runs the full height beside both. */
+  .live{display:grid; grid-template-columns:minmax(0,1fr) 340px; grid-template-areas:"player chat"; gap:20px; align-items:stretch}
+  .live.is-waiting{grid-template-areas:"player chat" "cd chat"}
   .player{
-    position:relative; aspect-ratio:16/9; max-width:100%; border-radius:var(--r); overflow:hidden;
+    grid-area:player; position:relative; aspect-ratio:16/9; max-width:100%; border-radius:var(--r); overflow:hidden;
     background:#041D22; border:1px solid var(--line-dk); box-shadow:0 26px 70px rgba(0,0,0,.5);
   }
   .player video,.player iframe{width:100%; height:100%; border:0; display:block; object-fit:cover}
+
+  /* Stand-in shown until the session opens. Looks like a player, but the play
+     button is decoration only: the video starts itself at zero. */
+  .poster{
+    position:absolute; inset:0; z-index:2; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:18px; padding:24px; text-align:center;
+    background:radial-gradient(120% 90% at 50% 40%,#0F4852 0%,#06272D 70%);
+    cursor:default; user-select:none;
+  }
+  .poster .pbtn{
+    width:clamp(62px,9vw,86px); height:clamp(62px,9vw,86px); border-radius:50%;
+    background:rgba(255,95,82,.94); display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 28px rgba(0,0,0,.45); pointer-events:none;
+  }
+  .poster .pbtn svg{width:38%; height:38%; margin-left:6%}
+  .poster .ptitle{font-family:var(--f-display); font-size:clamp(16px,2.1vw,24px); font-weight:800; color:#fff; letter-spacing:-.015em; max-width:28ch; line-height:1.2}
+  .poster .phost{font-size:13.5px; color:var(--on-dark-2)}
+  .chat-wait{margin:auto; text-align:center; font-size:14px; color:var(--on-dark-2); max-width:24ch}
 
   .noembed{
     position:absolute; inset:0; display:flex; flex-direction:column; gap:8px;
@@ -129,7 +151,7 @@
 
   /* ---------- Chat ---------- */
   .chat{
-    background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
+    grid-area:chat; background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
     display:flex; flex-direction:column; overflow:hidden; text-align:left; min-height:300px;
   }
   .chat-head{
@@ -156,19 +178,6 @@
   .meta div{font-size:13.5px; color:var(--on-dark-2); font-weight:600}
   .meta strong{color:var(--teal-lt); font-weight:800; font-family:var(--f-display)}
 
-  /* ---------- Bottom CTA ---------- */
-  .bottom{background:#041D22; text-align:center; padding-block:clamp(44px,5.6vw,68px); border-top:1px solid rgba(255,255,255,.07)}
-  .bottom h2{font-size:clamp(24px,3vw,35px); font-weight:800}
-  .bottom p{max-width:54ch; margin:14px auto 25px; font-size:17px; color:var(--on-dark-2)}
-  .btn{
-    display:inline-block; border:0; cursor:pointer; text-decoration:none;
-    font-family:var(--f-display); font-weight:800; font-size:19px;
-    background:var(--coral); color:#fff; padding:16px 42px; border-radius:10px;
-    box-shadow:0 3px 0 var(--coral-dk); transition:transform .12s ease, box-shadow .12s ease, background .12s ease;
-  }
-  .btn:hover{background:#FF4F41; transform:translateY(1px); box-shadow:0 2px 0 var(--coral-dk)}
-  .btn:active{transform:translateY(3px); box-shadow:0 0 0 var(--coral-dk)}
-  .bottom .cta-note{margin:15px 0 0; max-width:none; font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--teal-lt)}
 
   /* ---------- Footer ---------- */
   footer{background:#031519; color:#6E8A8E; padding-block:36px 28px; font-size:13.5px}
@@ -178,12 +187,15 @@
   .fnav a:hover{color:#fff; text-decoration:underline}
   .disclaim{margin-top:17px; font-size:12.5px; line-height:1.65; color:#5A767A}
   .disclaim b{color:#8FAAAE}
-  .buildnote{margin-top:16px; padding:11px 14px; border:1px dashed var(--line-dk); border-radius:8px; font-size:12.5px; color:#6E8A8E}
 
   @media (max-width:900px){
-    .live{grid-template-columns:1fr}
-    .player{order:1}
-    .chat{order:2; min-height:260px; max-height:360px}
+    .live{grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "chat"}
+    .live.is-waiting{grid-template-areas:"player" "cd" "chat"}
+    .chat{min-height:260px; max-height:360px}
+  }
+  @media (max-width:620px){
+    .poster{gap:12px; padding:16px}
+    .poster .phost{display:none}
   }
   @media (max-width:620px){
     body{font-size:16.5px}
@@ -191,8 +203,6 @@
     .frow{flex-direction:column; align-items:flex-start}
     .fnav{gap:4px 18px}
     .fnav a{padding-block:6px; font-size:14px}
-    .bottom .cta-note{font-size:11px; letter-spacing:.08em}
-    .btn{width:100%; padding-inline:20px}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none !important; transition:none !important}
@@ -213,26 +223,14 @@
 
     <div class="stagewrap" id="stagewrap">
 
-      <!-- Counting down -->
-      <div class="cd" id="cdStage">
-        <span class="cd-label">Starting in</span>
-        <div class="cd-time" id="cdBig">--:--</div>
-        <div class="cd-bar"><div class="cd-fill" id="cdFill"></div></div>
-        <p class="cd-note">Your session is about to begin. Keep this page open.</p>
-      </div>
-
-      <!-- Live: chat alongside the player -->
-      <div class="live" id="liveGrid" hidden>
-        <aside class="chat">
-          <div class="chat-head">
-            <span class="dot"></span>
-            <span class="chat-title">Live Chat</span>
-          </div>
-          <div class="chat-body" id="chatBody"></div>
-          <div class="chat-foot">Dr. Mike takes questions live at the end of the session. Note yours down as they come to you.</div>
-        </aside>
-
+      <!-- Video left, chat right -->
+      <div class="live is-waiting" id="liveGrid">
         <div class="player" id="playerStage">
+          <div class="poster" id="poster" aria-hidden="true">
+            <div class="pbtn"><svg viewBox="0 0 24 24" fill="#fff"><path d="M7 4.5v15l13-7.5z"/></svg></div>
+            <div class="ptitle">The 3 Secrets To Eliminating Adult Scoliosis Pain</div>
+            <div class="phost">with Dr. Michael Gardner, MD</div>
+          </div>
           <button type="button" class="soundbar" id="soundBar" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
@@ -240,25 +238,32 @@
             Tap for sound
           </button>
         </div>
+
+        <!-- Counting down: sits under the video until the session opens -->
+        <div class="cd" id="cdStage">
+          <span class="cd-label">Starting in</span>
+          <div class="cd-time" id="cdBig">--:--</div>
+          <div class="cd-bar"><div class="cd-fill" id="cdFill"></div></div>
+          <p class="cd-note">Your session is about to begin. Keep this page open.</p>
+        </div>
+
+        <aside class="chat">
+          <div class="chat-head">
+            <span class="dot"></span>
+            <span class="chat-title">Live Chat</span>
+          </div>
+          <div class="chat-body" id="chatBody"><p class="chat-wait" id="chatWait">The chat opens when the session starts.</p></div>
+          <div class="chat-foot">Dr. Mike takes questions live at the end of the session. Note yours down as they come to you.</div>
+        </aside>
       </div>
 
       <div class="meta" id="meta" hidden>
         <div><strong>35</strong> minutes</div>
         <div><strong>Link</strong> sent to your inbox</div>
-        <div><strong>Questions?</strong> Book a call below</div>
+        <div><strong>Live Q&amp;A</strong> at the end</div>
       </div>
 
     </div>
-  </div>
-</section>
-
-<!-- ====================== BOTTOM CTA ====================== -->
-<section class="bottom">
-  <div class="wrap">
-    <h2>Questions After The Masterclass?</h2>
-    <p>Book a short call with one of our scoliosis specialists to talk through your own curve, what you saw in the session, and anything it left open.</p>
-    <a class="btn" href="#">Book A Call &rarr;</a>
-    <p class="cta-note">No pitch &middot; No pressure &middot; No commitment</p>
   </div>
 </section>
 
@@ -279,7 +284,6 @@
     <p class="disclaim">
       <b>Medical disclaimer:</b> This masterclass is general educational information only. It is not medical advice, diagnosis or treatment, and it does not create a doctor-patient relationship. Scoliosis varies widely between individuals and results vary accordingly. Do not start, stop or change any exercise programme, brace protocol, medication or planned procedure on the basis of this content. Always consult your physician or a qualified healthcare provider about your own curve, especially if your pain is new, worsening, or accompanied by numbness, weakness or changes in bowel or bladder function.
     </p>
-    <p class="buildnote"><b>Build note (remove before launch):</b> the Tella embed is connected. The recording runs 37:48, so <code>MASTERCLASS_SECONDS</code> is 2268; the progress marks and the late-join cap derive from it. Four of the six <code>HOST_MESSAGES</code> are still PLACEHOLDER text and need timing against the real recording. Repoint the Book A Call links and footer nav too.</p>
   </div>
 </footer>
 
@@ -321,25 +325,6 @@
   function log(tag, msg){  if (DEBUG_PINGS) console.log("[masterclass] " + tag + ": " + msg); }
   function warn(tag, msg){ if (DEBUG_PINGS) console.warn("[masterclass] " + tag + " NOT sent: " + msg); }
 
-  var BOOKING_URL = "#";
-
-  /* Carry the contact id onward so identity survives the hop to booking. Reads
-     the URL first, then whatever the earlier pages stored, so the link still
-     carries it when someone arrived through the funnel rather than an email. */
-  function withContact(url){
-    if (url === "#") return url;
-    var cid = new URLSearchParams(window.location.search).get("c");
-    if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
-    if (!cid){
-      try {
-        var raw = sessionStorage.getItem("mbhAttendee") || localStorage.getItem("mbhAttendee") || "";
-        cid = (JSON.parse(raw || "{}") || {}).contact_id || "";
-      } catch (e) { cid = ""; }
-    }
-    if (!cid) return url;
-    return url + (url.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid);
-  }
-
   /* Must match the registration page, which is what chose the slot. */
   var SLOT_MS     = 15 * 60 * 1000;
   var MIN_LEAD_MS = 3 * 60 * 1000;
@@ -370,9 +355,7 @@
     { at: 5,    from: "MyBackHub Team", text: "Welcome in. Dr. Mike is about to walk through the three secrets. He takes questions live at the end, so note yours down as they come up." },
     { at: 60,   from: "MyBackHub Team", text: "PLACEHOLDER: time this to where Dr. Mike explains why straight-spine therapy fails a curved spine." },
     { at: 420,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the first secret." },
-    { at: 900,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the rotation explanation, the part most people have never had described to them." },
-    { at: 1320, from: "MyBackHub Team", text: "If you want to go through your own curve with someone, our specialists have a few times open this week.", link: { href: withContact(BOOKING_URL), label: "Book your call" } },
-    { at: 1680, from: "MyBackHub Team", text: "Link again while it is fresh. Nothing is for sale on the call.", link: { href: withContact(BOOKING_URL), label: "Book your call" } }
+    { at: 900,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the rotation explanation, the part most people have never had described to them." }
   ];
 
   /* =========================================================================
@@ -386,7 +369,6 @@
   var cdBig     = document.getElementById("cdBig");
   var cdFill    = document.getElementById("cdFill");
   var liveGrid  = document.getElementById("liveGrid");
-  var stagewrap = document.getElementById("stagewrap");
   var meta      = document.getElementById("meta");
   var badge     = document.getElementById("badge");
   var title     = document.getElementById("roomTitle");
@@ -634,9 +616,12 @@
   function reveal(offsetSec){
     offsetSec = Math.max(0, offsetSec || 0);
     cdStage.hidden = true;
-    liveGrid.hidden = false;
+    liveGrid.classList.remove("is-waiting");
+    var poster = document.getElementById("poster");
+    if (poster) poster.remove();
+    var chatWait = document.getElementById("chatWait");
+    if (chatWait) chatWait.remove();
     meta.hidden = false;
-    stagewrap.classList.add("is-live");
 
     sessionOpenedAt = Date.now() - offsetSec * 1000;
     buildPlayer(true, offsetSec);

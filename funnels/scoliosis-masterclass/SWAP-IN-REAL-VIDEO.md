@@ -57,7 +57,7 @@ watched to the end.
 
 ## 5. Still to do by hand
 
-`HOST_MESSAGES` in `live.html`. Four of the six are PLACEHOLDER text:
+`HOST_MESSAGES` in `live.html`. Three of the four are PLACEHOLDER text:
 
 | `at` | Content |
 |---|---|
@@ -65,10 +65,8 @@ watched to the end.
 | `60` | PLACEHOLDER: why straight-spine therapy fails |
 | `420` | PLACEHOLDER: the first secret |
 | `900` | PLACEHOLDER: the rotation explanation |
-| `1320` | Booking link. Real copy |
-| `1680` | Booking link, second prompt. Real copy |
 
-All six now fall inside the 2268 second runtime, so all six will fire. Watch
+All four fall inside the 2268 second runtime, so all four will fire. Watch
 the recording with a stopwatch and move each `at` to the moment the presenter
 reaches that point.
 

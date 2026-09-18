@@ -30,7 +30,6 @@ Structure and copy rhythm follow the Golden Key workshop funnel. See
   at zero. The current page never tells anyone when their session is.
 - Google, Outlook and `.ics` calendar links generated from the session time.
 - Four-item checklist rewritten for an exercise-based session.
-- Post-session "Book A Call" call-to-action.
 - Dr. Mike's welcome video carried across from the current page.
 
 ## Live room
@@ -112,9 +111,8 @@ arrive unidentified and no progress is recorded.
 - [ ] Set both countdowns to the true session cadence. They currently roll to
       the next `:00` or `:30`.
 - [ ] Set `LIVE_ROOM_URL` in `confirmation.html` if the waiting room is not at
-      `live.html`, and repoint Book A Call and the footer nav on every page.
+      `live.html`, and repoint the footer nav on every page.
 - [ ] Set the three `live.html` constants above.
-- [ ] Remove the build note from the footer of each page.
 - [ ] Reconcile brand tokens against the brand guidelines.
       See [../../docs/brand-tokens.md](../../docs/brand-tokens.md).
 
