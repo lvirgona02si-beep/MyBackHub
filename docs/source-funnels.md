@@ -61,9 +61,13 @@ claims. What was worth taking:
 - Watch-progress milestones fired as CRM tags, so an engaged lead is
   distinguishable from a browser.
 
-One thing worth copying verbatim is a decision, not a pattern: their live chat
-carries no scripted attendee messages, and their source says why. The same
-applies here with more force, because this is a medical offer.
+Their live chat has since grown a scripted attendee feed, and the master spec
+at [SIMULATED-LIVE-WEBINAR-SPEC.md](../SIMULATED-LIVE-WEBINAR-SPEC.md) documents
+how it is written. The machinery is ported here and left switched off: on a
+medical offer an invented attendee reporting that a treatment worked is a
+fabricated patient testimonial, which is an FTC problem before it is a taste
+problem. If that array is ever populated, it holds arrivals, questions and one
+honest sceptic, and no outcomes.
 
 What did not transfer: the financial risk warning became a medical disclaimer,
 and the yield figures have no equivalent worth inventing.

@@ -26,15 +26,21 @@ this returns OK.
   "last_name": "Doe",
   "email": "jane@example.com",
   "phone": "+15551234567",
+  "country": "US",
+  "country_code": "+1",
+
+  "marketing_consent": true,
+  "consent_text": "By checking this box, you agree to receive messages from MyBackHub about this masterclass by email and SMS. Opt out anytime.",
 
   "session_time_iso": "2026-09-15T19:45:00.000Z",
   "session_time_local": "2:45 PM",
   "session_date_local": "Tue, 15 Sep 2026",
-  "session_choice": "Starting shortly (2:45 PM)",
+  "session_choice": "Today at 2:45 PM · starts in 07:42",
   "session_is_just_in_time": true,
   "timezone": "America/New_York",
   "timezone_offset_minutes": -240,
 
+  "source": "sc-masterclass-registration",
   "market": "United States",
   "funnel_type": "Masterclass",
 
@@ -61,6 +67,24 @@ someone booked hours out. They need different reminder cadences: the
 just-in-time registrant needs nothing but the joining link, the later booking
 needs a reminder nearer the time.
 
+### Phone and country
+
+`phone` is E.164 when the phone library is up, and a lightly normalised raw
+value when it is not. The library is loaded async behind a 2.5 second timeout,
+so a CDN outage degrades the field rather than stalling the form. A blocking
+`<script src>` for a third party took out a previous funnel's opt-in rate for a
+day.
+
+`country` and `country_code` come from that field. **Map them.** GHL defaults
+an unqualified number to its own account country, which is how a US list fills
+up with UK numbers. Both are empty strings when the library did not load.
+
+### Consent
+
+`consent_text` carries the exact wording the visitor agreed to, read from the
+label on the page rather than duplicated here. A boolean on its own leaves you
+reconstructing what was agreed to months later, after the copy has changed.
+
 ### Meta fields
 
 `fbclid`, `fbp` and `fbc` are **empty strings until the pixel is on the page**
@@ -85,6 +109,15 @@ twice and doubling your reported cost per lead.
 Fires once per milestone: `watched-start`, `watched-25`, `watched-50`,
 `watched-75`, `watched-complete`.
 
+`seconds_watched` is the player's own `currentTime`, taken with `Math.max` so a
+mark can never un-fire, and accrued only while the tab is visible. It is real
+playback rather than time on the page: a stalled connection, or a phone sitting
+with autoplay refused, no longer walks anyone up to `watched-complete` without
+a frame having played.
+
+`watched-complete` fires at **90 percent, not 100**. People close the tab in
+the last seconds of an outro they have effectively finished.
+
 ```json
 {
   "type": "masterclass_progress",
@@ -106,8 +139,20 @@ reaching a Create/Update Contact action matches nothing and creates a blank
 record. This is why opening `live.html` directly sends nothing. Add
 `?c=TEST123`, or arrive through the confirmation page.
 
-The joining link in your emails needs `?c={{contact.id}}`. It is carried onward
-from confirmation to the room to the booking link, but it has to start there.
+The joining link in your emails needs `?c={{contact.id}}&t={{contact.session_time_iso}}`.
+Both are carried onward from confirmation to the room to the checkout link, but
+they have to start there.
+
+**`session_time_iso` must exist as a contact field *and* be mapped from this
+inbound webhook**, or the merge resolves to nothing, `&t=` does nothing, and the
+room silently reverts to opening the moment it loads. Send yourself a test and
+click it: the address bar has to show a real timestamp, not `%7B%7B…`.
+
+`&t=` is the only thing that survives a change of device. Someone who
+registered on their phone and opens the link on a laptop has no storage there
+at all. The room ignores the value if it is more than a day out or contains
+braces, so an unsubstituted merge field falls back to storage rather than being
+acted on.
 
 ---
 

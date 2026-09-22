@@ -1,7 +1,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
 <title>Masterclass Live Room</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
+
+<!-- Wistia's web component runtime. The per-media module is injected at reveal
+     time from the id in CONFIGURE ME below, so the id is written once. -->
+<script src="https://fast.wistia.com/player.js" async></script>
+
 <style>
   /* ============================================================
      BRAND TOKENS: MyBackHub
@@ -43,11 +49,12 @@
     font-family:var(--f-body); font-size:17px; line-height:1.6;
     -webkit-font-smoothing:antialiased;
   }
+  body.is-fs-lock{overflow:hidden}
   h1,h2{font-family:var(--f-display); color:#fff; margin:0; text-wrap:balance; line-height:1.08; letter-spacing:-.026em}
   p{margin:0}
   :focus-visible{outline:3px solid var(--teal-lt); outline-offset:3px}
 
-  .wrap{width:100%; max-width:1180px; margin-inline:auto; padding-inline:20px}
+  .wrap{width:100%; max-width:1340px; margin-inline:auto; padding-inline:20px}
 
   [hidden]{display:none !important}
 
@@ -80,7 +87,15 @@
   h1 em{font-style:normal; color:var(--teal-lt)}
   .room-sub{margin:15px auto 0; max-width:56ch; font-size:17px; color:var(--on-dark-2)}
 
-  .stagewrap{max-width:1180px; margin:clamp(26px,3.4vw,38px) auto 0}
+  /* The panels visibly grow at the moment the session opens. It is a small
+     thing and it is the difference between a page that switched state and a
+     room that just came to life. */
+  .player-wrap{
+    max-width:1040px; margin:clamp(26px,3.4vw,38px) auto 0;
+    transition:max-width .6s cubic-bezier(.2,.7,.3,1);
+  }
+  .player-wrap.is-live{max-width:1280px}
+  @media (prefers-reduced-motion:reduce){ .player-wrap{transition:none} }
 
   /* ---------- Countdown ---------- */
   .cd{
@@ -103,19 +118,56 @@
 
   /* ---------- Live grid ---------- */
   /* Video left, chat right, the chat exactly the video's height. While counting
-     down, the countdown runs the full width underneath both. */
-  .live{display:grid; grid-template-columns:minmax(0,1fr) 340px; grid-template-areas:"player chat"; gap:20px; align-items:stretch}
-  .live.is-waiting{grid-template-areas:"player chat" "cd cd"}
-  .player{
-    grid-area:player; position:relative; aspect-ratio:16/9; max-width:100%; border-radius:var(--r); overflow:hidden;
-    background:#041D22; border:1px solid var(--line-dk); box-shadow:0 26px 70px rgba(0,0,0,.5);
+     down, the countdown runs the full width underneath both.
+
+     Grid children default to min-width:auto. Wistia writes an iframe carrying
+     its own width attribute, and on a phone that one element would otherwise
+     set the floor for the whole row and shove the page sideways. */
+  .live-grid{
+    display:grid; grid-template-columns:minmax(0,1fr) 340px;
+    grid-template-areas:"player chat"; gap:20px; align-items:stretch;
   }
-  .player video,.player iframe{width:100%; height:100%; border:0; display:block; object-fit:cover}
+  .live-grid.is-waiting{grid-template-areas:"player chat" "cd cd"}
+  .live-grid > *{min-width:0}
+
+  /* The 16:9 box comes from a ::before padding ratio, not from aspect-ratio.
+     Every real child here is absolutely positioned, so the moment reveal()
+     removes the placeholder there is nothing left in flow to measure. Chrome
+     resolves aspect-ratio anyway; Safari collapses the player to a sliver.
+     A pseudo-element is always in flow. */
+  .player{
+    grid-area:player; position:relative; max-width:100%; border-radius:var(--r); overflow:hidden;
+    background:#041D22; border:1px solid var(--line-dk); box-shadow:0 26px 70px rgba(0,0,0,.5);
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+  }
+  .player::before{content:""; display:block; padding-top:56.25%}
+
+  /* Ours, not Wistia's: Wistia writes inline styles onto the player element and
+     inline beats a stylesheet rule. Sized by insets rather than height:100%,
+     because a percentage height inside a flex container resolves to zero on
+     iOS Safari. */
+  .player-fill{
+    position:absolute; inset:0; z-index:1;
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+  }
+  .player-fill wistia-player{display:block; width:100%; height:100%}
+  wistia-player:not(:defined){
+    display:block; width:100%; height:100%; filter:blur(5px);
+    background:center / contain no-repeat var(--swatch, none);
+  }
+
+  /* Wistia still toggles play/pause on a click to the video surface even with
+     every control switched off. This sits over the whole surface and under the
+     buttons, so nothing the viewer taps can pause a live session. */
+  .shield{
+    position:absolute; inset:0; z-index:2; cursor:default;
+    -webkit-touch-callout:none; user-select:none; -webkit-user-select:none;
+  }
 
   /* Stand-in shown until the session opens. Looks like a player, but the play
      button is decoration only: the video starts itself at zero. */
   .poster{
-    position:absolute; inset:0; z-index:2; display:flex; flex-direction:column;
+    position:absolute; inset:0; z-index:4; display:flex; flex-direction:column;
     align-items:center; justify-content:center; gap:18px; padding:24px; text-align:center;
     background:radial-gradient(120% 90% at 50% 40%,#0F4852 0%,#06272D 70%);
     cursor:default; user-select:none;
@@ -131,15 +183,15 @@
   .chat-wait{margin:auto; text-align:center; font-size:14px; color:var(--on-dark-2); max-width:24ch}
 
   .noembed{
-    position:absolute; inset:0; display:flex; flex-direction:column; gap:8px;
+    position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; gap:8px;
     align-items:center; justify-content:center; text-align:center; padding:28px;
-    color:var(--on-dark-2); font-size:14.5px;
+    color:var(--on-dark-2); font-size:14.5px; background:#041D22;
   }
   .noembed b{font-family:var(--f-display); font-size:17px; color:#fff}
   .noembed code{background:rgba(255,255,255,.1); padding:2px 6px; border-radius:4px}
 
   .soundbar{
-    position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:3;
+    position:absolute; left:50%; bottom:18px; transform:translateX(-50%); z-index:5;
     display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:0;
     background:var(--coral); color:#fff; border-radius:100px; padding:13px 24px;
     font-family:var(--f-display); font-size:14px; font-weight:800;
@@ -149,24 +201,79 @@
   .soundbar svg{width:17px; height:17px}
   @keyframes soundPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.045)}}
 
+  .resumebar{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:6;
+    display:inline-flex; align-items:center; gap:9px; cursor:pointer; border:0;
+    background:var(--coral); color:#fff; border-radius:100px; padding:15px 28px;
+    font-family:var(--f-display); font-size:15px; font-weight:800;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  .resumebar:hover{background:#FF4F41}
+
+  .fsbtn{
+    position:absolute; right:12px; bottom:12px; z-index:5;
+    display:inline-flex; align-items:center; gap:7px; cursor:pointer;
+    border:1px solid rgba(255,255,255,.22); background:rgba(4,29,34,.62); color:#fff;
+    border-radius:100px; padding:8px 14px; backdrop-filter:blur(6px);
+    font-family:var(--f-display); font-size:12px; font-weight:700; letter-spacing:.02em;
+  }
+  .fsbtn:hover{background:rgba(4,29,34,.85)}
+  .fsbtn svg{width:14px; height:14px}
+
+  /* On an iPhone, video fullscreen is the only fullscreen available and it
+     draws Apple's own player over the top: scrub bar, skip buttons, time
+     remaining on the file, in the middle of a session billed as live. So this
+     is a CSS overlay on the whole panel, with a real requestFullscreen layered
+     on top of it only where the browser supports one. Both look identical. */
+  .player-wrap.is-fs{
+    position:fixed; inset:0; z-index:9999; max-width:none; margin:0;
+    background:#000; display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .player-wrap.is-fs .live-grid{grid-template-columns:minmax(0,1fr); grid-template-areas:"player"; gap:0; width:100%}
+  .player-wrap.is-fs .chat-col,
+  .player-wrap.is-fs .cd,
+  .player-wrap.is-fs .meta{display:none}
+  .player-wrap.is-fs .player{
+    width:min(100vw, calc(100vh * 16 / 9)); margin-inline:auto;
+    border:0; border-radius:0; box-shadow:none;
+  }
+
   /* ---------- Chat ---------- */
+  /* The chat is absolutely positioned inside its column rather than being a
+     grid item in flow. In flow its height came from its own content, every
+     message released so far, and a grid row sizes to its tallest item, so a
+     long session stretched the row and the player with it. */
+  .chat-col{grid-area:chat; position:relative}
   .chat{
-    grid-area:chat; background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
+    position:absolute; inset:0;
+    background:var(--room); border:1px solid var(--line-dk); border-radius:var(--r);
     display:flex; flex-direction:column; overflow:hidden; text-align:left;
-    contain:size;   /* the video sets the row height; messages scroll inside */
   }
   .chat-head{
     padding:13px 16px; border-bottom:1px solid rgba(255,255,255,.1);
     display:flex; align-items:center; gap:9px; flex:none;
   }
   .chat-title{font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; color:#fff}
-  .chat-body{flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px}
+  /* A flex item defaults to min-height:auto and refuses to shrink below its
+     content, so without this the scrollbar never appears and the feed just
+     gets taller. */
+  .chat-body{flex:1; min-height:0; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px}
+  .chat-body.is-idle{justify-content:center}
   .chat-foot{
     padding:11px 16px; border-top:1px solid rgba(255,255,255,.1); flex:none;
     font-size:12.5px; color:var(--on-dark-2); line-height:1.45;
   }
-  .msg-from{font-family:var(--f-display); font-size:11.5px; font-weight:800; color:var(--teal-lt); margin-bottom:4px; letter-spacing:.02em}
-  .msg-text{font-size:14px; color:rgba(255,255,255,.8); line-height:1.55}
+  /* A pasted URL sets a minimum width the column would otherwise have to
+     honour, which pushes the whole grid sideways. */
+  .msg-from,.msg-text{overflow-wrap:anywhere}
+  .msg-from{font-family:var(--f-display); font-size:11.5px; font-weight:800; color:var(--on-dark-2); margin-bottom:3px; letter-spacing:.02em}
+  .msg-text{font-size:14px; color:rgba(255,255,255,.76); line-height:1.55}
+  .msg.is-host{border-left:3px solid var(--teal-lt); padding-left:11px}
+  .msg.is-host .msg-from{color:var(--teal-lt)}
+  .msg.is-host .msg-text{color:rgba(255,255,255,.92); font-weight:600}
+  .msg.is-mine{border-left:3px solid rgba(255,255,255,.22); padding-left:11px}
+  .msg.is-mine .msg-from{color:#fff}
+  .msg-note{margin-top:5px; font-size:12px; color:var(--on-dark-2); font-style:italic}
   .msg-link{
     display:inline-block; margin-top:11px; padding:10px 16px; border-radius:8px;
     background:var(--coral); color:#fff; text-decoration:none;
@@ -174,14 +281,33 @@
   }
   .msg-link:hover{background:#FF4F41}
 
+  /* The recording asks people more than once to put an answer in the chat, so
+     there has to be somewhere to put one. A prompt with no input is worse than
+     no prompt. What goes in stays on this screen. */
+  .composer{
+    flex:none; display:flex; gap:8px; padding:11px 12px;
+    border-top:1px solid rgba(255,255,255,.1);
+  }
+  .composer input{
+    flex:1; min-width:0; background:rgba(255,255,255,.07); color:#fff;
+    border:1px solid rgba(255,255,255,.14); border-radius:9px;
+    padding:10px 12px; font-family:var(--f-body); font-size:14px;
+  }
+  .composer input::placeholder{color:var(--on-dark-2)}
+  .composer button{
+    flex:none; border:0; cursor:pointer; background:var(--teal); color:#fff;
+    border-radius:9px; padding:0 15px; font-family:var(--f-display); font-weight:800; font-size:15px;
+  }
+  .composer button:hover{background:var(--teal-lt)}
+
   /* ---------- Meta row ---------- */
   .meta{display:flex; align-items:center; justify-content:center; gap:28px; flex-wrap:wrap; margin-top:22px}
   .meta div{font-size:13.5px; color:var(--on-dark-2); font-weight:600}
   .meta strong{color:var(--teal-lt); font-weight:800; font-family:var(--f-display)}
 
-
   /* ---------- Footer ---------- */
   footer{background:#031519; color:#6E8A8E; padding-block:36px 28px; font-size:13.5px}
+  footer .wrap{max-width:1180px}
   .frow{display:flex; justify-content:space-between; gap:18px; flex-wrap:wrap; align-items:center; padding-bottom:18px; border-bottom:1px solid var(--line-dk)}
   .fnav{display:flex; gap:17px; flex-wrap:wrap}
   .fnav a{color:#9FBABE; text-decoration:none; font-size:13px}
@@ -190,16 +316,16 @@
   .disclaim b{color:#8FAAAE}
 
   @media (max-width:900px){
-    .live{grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "chat"}
-    .live.is-waiting{grid-template-areas:"player" "cd" "chat"}
-    .chat{contain:none; min-height:260px; max-height:360px}
-  }
-  @media (max-width:620px){
-    .poster{gap:12px; padding:16px}
-    .poster .phost{display:none}
+    .live-grid{grid-template-columns:minmax(0,1fr); grid-template-areas:"player" "chat"}
+    .live-grid.is-waiting{grid-template-areas:"player" "cd" "chat"}
+    /* Back into static flow, bounded, so it scrolls rather than running away. */
+    .chat-col{position:static}
+    .chat{position:static; min-height:220px; max-height:380px}
   }
   @media (max-width:620px){
     body{font-size:16.5px}
+    .poster{gap:12px; padding:16px}
+    .poster .phost{display:none}
     .meta{gap:8px 18px}
     .frow{flex-direction:column; align-items:flex-start}
     .fnav{gap:4px 18px}
@@ -222,21 +348,32 @@
     <h1 id="roomTitle">Your Masterclass Starts <em>Shortly</em></h1>
     <p class="room-sub" id="roomSub">Keep this page open. Your session begins automatically the moment the countdown reaches zero.</p>
 
-    <div class="stagewrap" id="stagewrap">
+    <div class="player-wrap" id="playerWrap">
 
       <!-- Video left, chat right -->
-      <div class="live is-waiting" id="liveGrid">
+      <div class="live-grid is-waiting" id="liveGrid">
         <div class="player" id="playerStage">
+          <div class="player-fill" id="playerFill"></div>
+          <div class="shield" id="shield" aria-hidden="true"></div>
+
           <div class="poster" id="poster" aria-hidden="true">
             <div class="pbtn"><svg viewBox="0 0 24 24" fill="#fff"><path d="M7 4.5v15l13-7.5z"/></svg></div>
             <div class="ptitle">The 3 Secrets To Eliminating Adult Scoliosis Pain</div>
             <div class="phost">with Dr. Michael Gardner, MD</div>
           </div>
+
           <button type="button" class="soundbar" id="soundBar" hidden>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
             </svg>
             Tap for sound
+          </button>
+
+          <button type="button" class="fsbtn" id="fsBtn" aria-pressed="false" hidden>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/>
+            </svg>
+            <span id="fsLabel">Full screen</span>
           </button>
         </div>
 
@@ -248,14 +385,20 @@
           <p class="cd-note">Your session is about to begin. Keep this page open.</p>
         </div>
 
-        <aside class="chat">
-          <div class="chat-head">
-            <span class="dot"></span>
-            <span class="chat-title">Live Chat</span>
-          </div>
-          <div class="chat-body" id="chatBody"><p class="chat-wait" id="chatWait">The chat opens when the session starts.</p></div>
-          <div class="chat-foot">Dr. Mike takes questions live at the end of the session. Note yours down as they come to you.</div>
-        </aside>
+        <div class="chat-col">
+          <aside class="chat">
+            <div class="chat-head">
+              <span class="dot"></span>
+              <span class="chat-title">Live Chat</span>
+            </div>
+            <div class="chat-body is-idle" id="chatBody"><p class="chat-wait" id="chatWait">The chat opens when the session starts.</p></div>
+            <div class="chat-foot" id="chatFoot">Dr. Mike takes questions live at the end of the session. Note yours down as they come to you.</div>
+            <form class="composer" id="chatForm" hidden>
+              <input id="chatInput" type="text" placeholder="Type your answer…" aria-label="Your message" autocomplete="off" maxlength="240">
+              <button type="submit" aria-label="Send">&rarr;</button>
+            </form>
+          </aside>
+        </div>
       </div>
 
       <div class="meta" id="meta" hidden>
@@ -296,21 +439,24 @@
      CONFIGURE ME
      ========================================================================= */
 
-  /* The masterclass embed. Set EMBED_BASE to the player URL with no query
-     string; the params are added per state below.
+  /* The masterclass on Wistia. One id, written once.
 
-       Vimeo   https://player.vimeo.com/video/123456789
-       Tella   https://www.tella.tv/video/vid_xxxxxxxx/embed
+     The reference spec keeps every media id in a shared video.js. This funnel
+     has a single page that plays video, and the repo's rule is that a page is
+     one self-contained file, so the id lives here instead. If an on-demand or
+     recap page is ever added, lift this block into video.js and have all three
+     read from it rather than copying the id.
 
-     Leave it empty and the room shows a clear placeholder rather than a black
-     box, so a missing URL is obvious instead of looking like a broken player. */
-  var EMBED_BASE = "https://www.tella.tv/video/vid_cmu716b8d00ww0agmcmnbhava/embed";
-  var PLAYER     = "tella";        /* "vimeo" or "tella" */
+     The Wistia dashboard settings for a media beat the attributes on an embed
+     for anything not named explicitly, so every control is named below. If this
+     media is ever also used for an on-demand page, upload it a second time
+     rather than sharing one: one media cannot be both chromeless and scrubable. */
+  var WISTIA_ID = "5i1tmdo2w2";
 
-  /* Real runtime of the recording: 37:48. Every progress mark and the late
-     join cap are fractions of this, so it is the only number to change if the
-     video is re-cut. The customer-facing copy says "around 35 minutes", which
-     is a promise rather than a measurement and is deliberately left alone. */
+  /* Real runtime of the recording. Corrected from Wistia's own duration the
+     moment the player reports one, so a re-cut needs no change here: every
+     progress mark is a fraction of it. Left as a sane default for the seconds
+     before the player is ready. */
   var MASTERCLASS_SECONDS = 2268;
 
   /* MyBackHub inbound webhook for masterclass watch progress. This receives
@@ -323,17 +469,26 @@
      and the reason for it. */
   var DEBUG_PINGS = true;
 
-  function log(tag, msg){  if (DEBUG_PINGS) console.log("[masterclass] " + tag + ": " + msg); }
-  function warn(tag, msg){ if (DEBUG_PINGS) console.warn("[masterclass] " + tag + " NOT sent: " + msg); }
+  /* Take sessions down for a day without touching the ads or the registration
+     page. Mirrors the same flag on the confirmation page. Registration, the
+     pixel and the webhook are deliberately untouched, so opt-in rate still
+     measures cleanly on a day with no session running. */
+  var SESSION_ON_HOLD = false;
+  var CONFIRMATION_URL = "confirmation.html";
+
+  /* Where the room sends people at the end of the session. */
+  var CHECKOUT_URL = "checkout.html";
 
   /* Must match the registration page, which is what chose the slot. */
   var SLOT_MS     = 15 * 60 * 1000;
   var MIN_LEAD_MS = 3 * 60 * 1000;
 
-  /* Take sessions down for a day without touching the ads or the registration
-     page. Mirrors the same flag on the confirmation page. */
-  var SESSION_ON_HOLD = false;
-  var CONFIRMATION_URL = "https://claude.ai/artifact/CiczUVMvgLku6rhfG3UcUR";
+  /* Prefixed, so a second funnel on the same domain cannot collide. */
+  var SESSION_KEY  = "mbhMasterclassStart";
+  var CHOICE_KEY   = "mbhMasterclassChoice";
+  var ENTERED_KEY  = "mbhMasterclassEntered";
+  var ATTENDEE_KEY = "mbhAttendee";
+  var ORIGIN_KEY   = "mbhOriginPage";
 
   /* How late someone can arrive and still be dropped into a session already in
      progress, the way they would be on a real live call. Past this they have
@@ -344,39 +499,81 @@
   /* -------------------------------------------------------------------------
      Host chat feed.
 
-     One way, and host only. There are deliberately no scripted "attendee"
-     messages: inventing patients who say a treatment worked is not something
-     we do, and on a medical offer it is the kind of thing that ends a company.
-     Real questions go to the live Q&A at the end.
+     `at` is seconds of video *watched*, never wall clock, so a line lands
+     against the right part of the talk even for someone who paused or joined
+     late.
 
-     `at` is seconds of video watched, so the feed stays in step with the
-     viewer even if they join late or switch tabs.
+     STILL TO TIME. These four are placeholders scaled from the presenter
+     script. Pull the caption track and anchor every one of them to a phrase
+     Dr. Mike actually says:
+
+         https://fast.wistia.net/embed/captions/5i1tmdo2w2.vtt
+
+     Anything he reads out loud must be on screen BEFORE he reads it, 3 to 20
+     seconds ahead of its anchor. Getting that backwards has him answering a
+     message nobody sent yet, which is the most obvious tell in the build.
      ------------------------------------------------------------------------- */
   var HOST_MESSAGES = [
     { at: 5,    from: "MyBackHub Team", text: "Welcome in. Dr. Mike is about to walk through the three secrets. He takes questions live at the end, so note yours down as they come up." },
     { at: 60,   from: "MyBackHub Team", text: "PLACEHOLDER: time this to where Dr. Mike explains why straight-spine therapy fails a curved spine." },
     { at: 420,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the first secret." },
-    { at: 900,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the rotation explanation, the part most people have never had described to them." }
+    { at: 900,  from: "MyBackHub Team", text: "PLACEHOLDER: time this to the rotation explanation, the part most people have never had described to them." },
+    { at: 2100, from: "MyBackHub Team", text: "Here is the link Dr. Mike just mentioned. It stays open while the session finishes.",
+      link: { href: CHECKOUT_URL, label: "Open The Scoliosis Solution" } }
   ];
+
+  /* -------------------------------------------------------------------------
+     Simulated attendees.
+
+     Deliberately empty and switched OFF. The machinery is here and wired:
+     write the cast into SIM_MESSAGES, flip SIM_ON, and the room fills.
+
+     Two things to hold to when that array is written:
+
+     - These go through addMessage with NO host flag, and only a host line can
+       render a link. That is the safety property: nothing in the attendee feed
+       can ever become a clickable URL.
+     - This is a medical offer. An invented attendee reporting that a treatment
+       worked is a fabricated patient testimonial, which is an FTC problem
+       before it is a taste problem. Arrivals, locations, logistics, questions
+       and one honest sceptic are the material. Outcomes are not.
+
+     Conventions to carry as trailing comments, written as you go rather than
+     afterwards: // LOCKED for a line Dr. Mike reads out loud, which must be on
+     screen before he reads it, and // SEEDED for an objection planted a few
+     seconds before he answers it.
+     ------------------------------------------------------------------------- */
+  var SIM_ON = false;
+  var SIM_MESSAGES = SIM_ON ? [
+    /* { at: 3,   from: "PLACEHOLDER", text: "PLACEHOLDER" },            */
+    /* { at: 374, from: "PLACEHOLDER", text: "PLACEHOLDER" },  // LOCKED */
+    /* { at: 632, from: "PLACEHOLDER", text: "PLACEHOLDER" },  // SEEDED */
+  ] : [];
 
   /* =========================================================================
      Wiring
      ========================================================================= */
+  function log(tag, msg){  if (DEBUG_PINGS) console.log("[masterclass] " + tag + ": " + msg); }
+  function warn(tag, msg){ if (DEBUG_PINGS) console.warn("[masterclass] " + tag + " NOT sent: " + msg); }
 
-  var SESSION_KEY = "mbhMasterclassStart";
-  var ATTENDEE_KEY = "mbhAttendee";
-
-  var cdStage   = document.getElementById("cdStage");
-  var cdBig     = document.getElementById("cdBig");
-  var cdFill    = document.getElementById("cdFill");
-  var liveGrid  = document.getElementById("liveGrid");
-  var meta      = document.getElementById("meta");
-  var badge     = document.getElementById("badge");
-  var title     = document.getElementById("roomTitle");
-  var sub       = document.getElementById("roomSub");
-  var chatBody  = document.getElementById("chatBody");
-  var stage     = document.getElementById("playerStage");
-  var soundBar  = document.getElementById("soundBar");
+  var cdStage    = document.getElementById("cdStage");
+  var cdBig      = document.getElementById("cdBig");
+  var cdFill     = document.getElementById("cdFill");
+  var wrapEl     = document.getElementById("playerWrap");
+  var liveGrid   = document.getElementById("liveGrid");
+  var meta       = document.getElementById("meta");
+  var badge      = document.getElementById("badge");
+  var title      = document.getElementById("roomTitle");
+  var sub        = document.getElementById("roomSub");
+  var chatBody   = document.getElementById("chatBody");
+  var chatFoot   = document.getElementById("chatFoot");
+  var chatForm   = document.getElementById("chatForm");
+  var chatInput  = document.getElementById("chatInput");
+  var stage      = document.getElementById("playerStage");
+  var playerFill = document.getElementById("playerFill");
+  var soundBar   = document.getElementById("soundBar");
+  var fsBtn      = document.getElementById("fsBtn");
+  var fsLabel    = document.getElementById("fsLabel");
 
   if (!cdStage || !liveGrid) return;
 
@@ -384,20 +581,40 @@
      holding page rather than landing in an empty room. */
   if (SESSION_ON_HOLD){ window.location.replace(CONFIRMATION_URL); return; }
 
-  /* The booked start is mirrored into localStorage as well as sessionStorage.
+  /* So the checkout page can route its "back" link to whichever funnel sent
+     the visitor. */
+  try { sessionStorage.setItem(ORIGIN_KEY, window.location.pathname); } catch (e) {}
+
+  /* Reaching the room at all is the "actually attended" signal, so this fires
+     on load rather than at reveal: someone who arrives and sits through the
+     wait has still attended. MasterclassStart, below, is the separate signal
+     that the player opened. */
+  if (typeof fbq === "function"){
+    fbq("track", "ViewContent", { content_name: "Scoliosis Masterclass" });
+  }
+
+  /* -------------------------------------------------------------------------
+     Storage: always mirror to both, read session first.
+
      Someone clicking the confirmation email arrives in a fresh browser session
-     where sessionStorage is already gone, and without this they look like a
-     brand new visitor and get handed a second countdown. */
-  function readStart(){
+     where sessionStorage is already gone. Without the localStorage mirror they
+     look like a brand new visitor and get handed a second countdown. Every
+     access is wrapped: private mode and blocked site data both throw.
+     ------------------------------------------------------------------------- */
+  function write(key, val){
+    try { sessionStorage.setItem(key, val); } catch (e) {}
+    try { localStorage.setItem(key, val); } catch (e) {}
+  }
+  function readNum(key){
     var v = 0;
-    try { v = parseInt(sessionStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {}
-    if (!v) { try { v = parseInt(localStorage.getItem(SESSION_KEY) || "0", 10) || 0; } catch (e) {} }
+    try { v = parseInt(sessionStorage.getItem(key) || "0", 10) || 0; } catch (e) {}
+    if (!v) { try { v = parseInt(localStorage.getItem(key) || "0", 10) || 0; } catch (e) {} }
     return v;
   }
-  function rememberStart(t){
-    try { sessionStorage.setItem(SESSION_KEY, String(t)); } catch (e) {}
-    try { localStorage.setItem(SESSION_KEY, String(t)); } catch (e) {}
-  }
+  function readStart(){ return readNum(SESSION_KEY); }
+  function rememberStart(t){ write(SESSION_KEY, String(t)); }
+  function readEntered(){ return readNum(ENTERED_KEY); }
+  function rememberEntered(t){ write(ENTERED_KEY, String(t)); }
 
   function pad(n){ return String(n).padStart(2, "0"); }
   function fmt(ms){
@@ -405,49 +622,97 @@
     return pad(Math.floor(total / 60)) + ":" + pad(total % 60);
   }
 
-  /* ---- Chat ------------------------------------------------------------- */
-  function addMessage(from, text, link){
-    var wrap = document.createElement("div");
-    var who  = document.createElement("div");
+  /* =========================================================================
+     Chat
+     ========================================================================= */
+
+  /* textContent always, never innerHTML: a typed question can never inject
+     markup. `link` is honoured only when `host` is set, and the viewer's own
+     messages go through this same function, so that gate is what stops typed
+     text ever rendering a link. */
+  function addMessage(from, text, opts){
+    opts = opts || {};
+    var msg = document.createElement("div");
+    msg.className = "msg" + (opts.host ? " is-host" : "") + (opts.mine ? " is-mine" : "");
+
+    var who = document.createElement("div");
     who.className = "msg-from";
     who.textContent = from;
+    msg.appendChild(who);
+
     var body = document.createElement("div");
     body.className = "msg-text";
-    body.textContent = text;          /* textContent, never innerHTML */
-    wrap.appendChild(who);
-    wrap.appendChild(body);
-    if (link){
+    body.textContent = text;
+    msg.appendChild(body);
+
+    if (opts.note){
+      var n = document.createElement("div");
+      n.className = "msg-note";
+      n.textContent = opts.note;
+      msg.appendChild(n);
+    }
+
+    if (opts.host && opts.link && opts.link.href){
       var a = document.createElement("a");
       a.className = "msg-link";
-      a.href = link.href;
-      a.textContent = link.label;
-      wrap.appendChild(a);
+      a.href = opts.link.href;
+      a.textContent = opts.link.label || opts.link.href;
+      /* Following a link in place walks them out of the session, and the way
+         back is a reload that drops them in well past where they left. rel
+         goes with target, or the opened page gets a handle on this one
+         through window.opener. */
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      msg.appendChild(a);
     }
-    chatBody.appendChild(wrap);
+
+    chatBody.appendChild(msg);
     chatBody.scrollTop = chatBody.scrollHeight;
   }
 
+  /* Two arrays, two fired maps, one loop each, driven off the same tick as the
+     tracking. */
   var firedMessages = {};
+  var firedSim = {};
   function releaseDueMessages(seconds){
     if (!chatBody) return;
-    for (var i = 0; i < HOST_MESSAGES.length; i++){
-      if (!firedMessages[i] && seconds >= HOST_MESSAGES[i].at){
+    var i;
+    for (i = 0; i < HOST_MESSAGES.length; i++){
+      var m = HOST_MESSAGES[i];
+      if (!firedMessages[i] && seconds >= m.at){
         firedMessages[i] = true;
-        addMessage(HOST_MESSAGES[i].from, HOST_MESSAGES[i].text, HOST_MESSAGES[i].link);
+        addMessage(m.from, m.text, { host: true, link: m.link });
+      }
+    }
+    for (i = 0; i < SIM_MESSAGES.length; i++){
+      var s = SIM_MESSAGES[i];
+      if (!firedSim[i] && seconds >= s.at){
+        firedSim[i] = true;
+        addMessage(s.from, s.text, {});
       }
     }
   }
 
-  /* ---- Attendee identity ------------------------------------------------ */
+  /* Local only. Nothing typed here is posted anywhere. */
+  if (chatForm){
+    chatForm.addEventListener("submit", function(e){
+      e.preventDefault();
+      var text = chatInput.value.trim();
+      if (!text) return;
+      addMessage("You", text, { mine: true });
+      chatInput.value = "";
+    });
+  }
+
+  /* =========================================================================
+     Attendee identity
+     ========================================================================= */
   /* Read lazily rather than at load, so attribution does not depend on script
      order. Anyone arriving from the confirmation email is in a fresh browser
      session with no stored attendee, so ?c=<contact id> is what identifies
      them and keeps progress pings working on a return visit. */
   function getAttendee(){
     var a = {}, raw = "";
-    /* sessionStorage first, localStorage as fallback, same as the session key.
-       Someone clicking the joining link from their email is in a fresh browser
-       session where sessionStorage is already gone. */
     try { raw = sessionStorage.getItem(ATTENDEE_KEY) || ""; } catch (e) {}
     if (!raw) { try { raw = localStorage.getItem(ATTENDEE_KEY) || ""; } catch (e) {} }
     try { a = JSON.parse(raw || "{}") || {}; } catch (e) {}
@@ -458,26 +723,31 @@
     if (cid && /[{}]/.test(decodeURIComponent(cid))) cid = null;
     if (cid){
       a.contact_id = cid;
-      var j = JSON.stringify(a);
-      try { sessionStorage.setItem(ATTENDEE_KEY, j); } catch (e) {}
-      try { localStorage.setItem(ATTENDEE_KEY, j); } catch (e) {}
+      write(ATTENDEE_KEY, JSON.stringify(a));
     }
     return a;
   }
 
-  /* ---- Progress ---------------------------------------------------------- */
+  /* =========================================================================
+     Engagement tracking
+     ========================================================================= */
   var MARKS = [
     { at: 0.25, ev: "Masterclass25",       tag: "watched-25",       pct: 25 },
     { at: 0.50, ev: "Masterclass50",       tag: "watched-50",       pct: 50 },
     { at: 0.75, ev: "Masterclass75",       tag: "watched-75",       pct: 75 },
-    { at: 0.95, ev: "MasterclassComplete", tag: "watched-complete", pct: 100 }
+    /* 90, not 100. People close the tab in the last seconds of an outro they
+       have effectively finished, and holding out for the full length loses
+       most of the audience that actually watched it. This tag gates the
+       follow-up, so erring generous is the right way to be wrong. */
+    { at: 0.90, ev: "MasterclassComplete", tag: "watched-complete", pct: 100 }
   ];
   var firedMarks = {};
-  var watched = 0;
+  var watchedSeconds = 0;
+  var lastTick = null;
 
   function fireMeta(name){
     if (typeof fbq === "function"){
-      fbq("trackCustom", name, { content_name: "Scoliosis Masterclass", seconds_watched: Math.round(watched) });
+      fbq("trackCustom", name, { content_name: "Scoliosis Masterclass", seconds_watched: Math.round(watchedSeconds) });
     }
   }
 
@@ -503,7 +773,7 @@
       type: "masterclass_progress",
       tag: tag,
       percent: pct,
-      seconds_watched: Math.round(watched),
+      seconds_watched: Math.round(watchedSeconds),
       watched_at: new Date().toISOString()
     };
     if (attendee.contact_id) payload.contact_id = attendee.contact_id;
@@ -523,27 +793,33 @@
     });   /* best effort, never block the player */
   }
 
-  /* An embedded player exposes no playback position cross-origin, so this
-     measures *visible* time on the page instead. The timer only advances while
-     the tab is actually in view, which rules out someone leaving the room open
-     in a background tab and inflating the numbers. Without that, anyone who
-     opens the page and walks away gets tagged as having watched to the end, and
-     the one signal separating a buyer from a browser is worthless. */
-  var lastTick = null;
+  /* Progress is real playback, not time on the page: a stalled connection no
+     longer walks someone up to watched-complete without them seeing a frame.
 
+     The !video guard on the wall-clock branch is load-bearing. A player that
+     exists but reports nothing is the normal state on a phone where autoplay
+     was refused and the video is sitting waiting for a tap. Counting seconds
+     there walked those viewers to watched-complete with no frame played, and
+     that tag is the one signal the follow-up branches on. */
   function engagementTick(){
     var now = Date.now();
     if (document.visibilityState === "visible"){
-      if (lastTick !== null) watched += (now - lastTick) / 1000;
+      var t = null;
+      if (video){ try { t = video.currentTime; } catch (e) { t = null; } }
+      if (t !== null && isFinite(t) && t > 0){
+        watchedSeconds = Math.max(watchedSeconds, t);   /* monotonic: a mark can never un-fire */
+      } else if (!video && lastTick !== null){
+        watchedSeconds += (now - lastTick) / 1000;      /* wall clock ONLY with no player at all */
+      }
       lastTick = now;
     } else {
-      lastTick = null;          /* paused while the tab is hidden */
+      lastTick = null;                                   /* a hidden tab accrues nothing */
     }
 
-    releaseDueMessages(watched);
+    releaseDueMessages(watchedSeconds);
     for (var i = 0; i < MARKS.length; i++){
       var m = MARKS[i];
-      if (!firedMarks[m.ev] && watched >= MASTERCLASS_SECONDS * m.at){
+      if (!firedMarks[m.ev] && watchedSeconds >= MASTERCLASS_SECONDS * m.at){
         firedMarks[m.ev] = true;
         fireMeta(m.ev);
         pingProgress(m.tag, m.pct);
@@ -557,87 +833,238 @@
      never sent: they reached that point of the video, they did not watch it,
      and tagging them for it would poison the signal. */
   function startEngagementTracking(offsetSec){
-    watched = offsetSec;
+    watchedSeconds = offsetSec;
     for (var i = 0; i < MARKS.length; i++){
       if (MASTERCLASS_SECONDS * MARKS[i].at <= offsetSec) firedMarks[MARKS[i].ev] = true;
     }
     fireMeta("MasterclassStart");
     pingProgress("watched-start", 0);
     releaseDueMessages(offsetSec);
-
     lastTick = Date.now();
-    document.addEventListener("visibilitychange", function(){
-      lastTick = document.visibilityState === "visible" ? Date.now() : null;
-    });
     setInterval(engagementTick, 1000);
   }
 
-  /* ---- Player ------------------------------------------------------------ */
-  /* Autoplay is only permitted while muted, and the click that got them here
-     happened on the previous page so it does not carry as a user gesture. The
-     session therefore opens muted and already running, with a prompt for sound.
-
-     The start offset is what makes late joining work: whatever host you use
-     must support seeking from the URL. Vimeo and Tella both do. Check this
-     before committing to a host, because without it the whole premise of
-     dropping someone into a session in progress collapses. */
-  function embedSrc(muted, startAt){
-    var t = Math.max(0, Math.round(startAt));
-    if (PLAYER === "tella"){
-      return EMBED_BASE + "?b=0&title=0&a=1&loop=0&wt=0&o=0" +
-             "&muted=" + (muted ? 1 : 0) + "&t=" + t;
+  /* The room pauses the video on hide and resumes on show, so a backgrounded
+     tab accrues nothing and nobody misses content. */
+  document.addEventListener("visibilitychange", function(){
+    if (document.visibilityState === "visible"){
+      lastTick = Date.now();
+      if (video && video.paused) resumePlayback();
+    } else {
+      lastTick = null;
+      if (video){ try { video.pause(); } catch (e) {} }
     }
-    /* Vimeo takes the offset as a media fragment, not a query param. */
-    return EMBED_BASE + "?autoplay=1&title=0&byline=0&portrait=0&badge=0&dnt=1" +
-           "&muted=" + (muted ? 1 : 0) + "#t=" + t + "s";
+  });
+
+  /* =========================================================================
+     Player
+     ========================================================================= */
+  var video = null;
+  var resumeBtn = null;
+
+  function clearResume(){
+    if (resumeBtn){ resumeBtn.remove(); resumeBtn = null; }
   }
 
-  function buildPlayer(muted, startAt){
-    if (!EMBED_BASE){
-      stage.insertAdjacentHTML("afterbegin",
+  /* play() returns a promise and a rejection never reaches a try/catch, which
+     is why this failed silently for a while. On a phone a notification banner,
+     the app switcher, the share sheet and the control centre all fire
+     visibilitychange; the handler pauses, and then iOS refuses play() on an
+     unmuted video without a fresh gesture. That is what the button is for. */
+  function resumePlayback(){
+    if (!video) return;
+    var p;
+    try { p = video.play(); } catch (e) { p = null; }
+    if (p && typeof p.then === "function"){
+      p.then(clearResume).catch(function(){
+        if (resumeBtn) return;
+        resumeBtn = document.createElement("button");
+        resumeBtn.type = "button";
+        resumeBtn.className = "resumebar";
+        resumeBtn.textContent = "Tap to resume";
+        resumeBtn.addEventListener("click", function(){
+          try { video.play(); } catch (e) {}
+          clearResume();
+        });
+        stage.appendChild(resumeBtn);
+      });
+    } else {
+      clearResume();
+    }
+  }
+
+  function buildPlayer(seekTo){
+    if (!WISTIA_ID){
+      stage.insertAdjacentHTML("beforeend",
         '<div class="noembed"><b>No video connected</b>' +
-        '<span>Set <code>EMBED_BASE</code> at the top of this page to your Vimeo or Tella embed URL.</span></div>');
+        '<span>Set <code>WISTIA_ID</code> at the top of this page to the masterclass media id.</span></div>');
       return;
     }
-    var old = stage.querySelector("iframe");
-    if (old) old.remove();
-    var f = document.createElement("iframe");
-    f.src = embedSrc(muted, startAt);
-    f.title = "Scoliosis Masterclass with Dr. Michael Gardner, MD";
-    f.setAttribute("allow", "autoplay; fullscreen");
-    f.setAttribute("allowtransparency", "");
-    stage.insertBefore(f, soundBar);
+
+    /* The per-media module, injected from the resolved id so the id stays
+       written in exactly one place. */
+    var mod = document.createElement("script");
+    mod.src = "https://fast.wistia.com/embed/" + WISTIA_ID + ".js";
+    mod.async = true;
+    mod.type = "module";
+    document.head.appendChild(mod);
+
+    video = document.createElement("wistia-player");
+    video.setAttribute("media-id", WISTIA_ID);
+    video.setAttribute("aspect", "1.7777777777777777");
+    video.style.setProperty("--swatch", "url('https://fast.wistia.com/embed/medias/" + WISTIA_ID + "/swatch')");
+
+    /* Every control off, by name. A Wistia media carries its own player
+       settings and those beat the attributes on an embed for anything left
+       unnamed, so a change in the dashboard could otherwise put a progress bar
+       over a live session.
+
+       Two of these were wrong for a while and both leak the illusion:
+       copy-link-and-thumbnail (mis-spelled with -enabled, so "Copy Link and
+       Thumbnail" stayed in the right-click menu, naming the media and linking
+       the file) and wistia-logo (it sits outside the control bar, so switching
+       every *control* off never touched it, and it is worst in fullscreen). */
+    [["autoplay","true"], ["muted","true"], ["silent-autoplay","allow"],
+     ["controls-visible-on-load","false"], ["playbar","false"],
+     ["play-button","false"], ["small-play-button","false"],
+     ["volume-control","false"], ["fullscreen-button","false"],
+     ["settings-control","false"], ["quality-control","false"],
+     ["playback-rate-control","false"], ["play-pause-notifier","false"],
+     ["copy-link-and-thumbnail","false"],
+     ["resumable","false"],
+     ["wistia-logo","false"],
+     ["do-not-track","true"],
+     ["end-video-behavior","default"]
+    ].forEach(function(a){ video.setAttribute(a[0], a[1]); });
+
+    playerFill.appendChild(video);
+
+    /* There is no reliable ready event. Poll, and give up rather than spin.
+       Wistia's own duration beats the constant, which is what lets the video be
+       re-cut without touching the marks or anything in the CRM. */
+    var tries = 0;
+    var ready = setInterval(function(){
+      var d = null;
+      try { d = video.duration; } catch (e) { d = null; }
+      if (d && isFinite(d) && d > 0){
+        clearInterval(ready);
+        MASTERCLASS_SECONDS = d;
+        log("player", "ready, duration " + Math.round(d) + "s");
+        if (seekTo > 0){ try { video.currentTime = Math.min(seekTo, d - 1); } catch (e) {} }
+        try { video.play(); } catch (e) {}
+      } else if (++tries > 60){
+        clearInterval(ready);
+        warn("player", "no duration after 30s; leaving MASTERCLASS_SECONDS at the constant");
+      }
+    }, 500);
+
+    /* A phone stops playback on its own: an incoming call, another app taking
+       the audio, Low Power Mode. A live session sitting quietly paused is the
+       worst failure there is here. */
+    video.addEventListener("pause", function(){
+      if (document.visibilityState !== "visible") return;   /* ours, on hide */
+      if (video.ended) return;
+      var d = video.duration;
+      if (d && isFinite(d) && video.currentTime >= d - 1.5) return;   /* run-out */
+      setTimeout(function(){
+        if (video && video.paused && document.visibilityState === "visible") resumePlayback();
+      }, 250);
+    });
+    video.addEventListener("playing", clearResume);
   }
 
-  /* Wall-clock time of video position zero. Storing this rather than a counter
-     means the rebuild on unmute lands where they actually are, no matter how
-     long they took to tap. */
-  var sessionOpenedAt = 0;
+  /* Muted autoplay is the one form every browser permits without a gesture, so
+     the session starts silent behind a prompt. The click that got them here
+     happened on the previous page and does not carry.
+
+     Play first, unmute second: unmuting before the video is running turns a
+     request the browser would have allowed into one it can refuse outright.
+     And the bar only goes once playback is actually under way. The shield
+     covers the whole video surface, so removing the bar on a failed tap left
+     the player with no control that could reach it and no way back but a
+     reload. */
+  function wireSoundBar(){
+    soundBar.hidden = false;
+    soundBar.addEventListener("click", function(){
+      if (!video){ soundBar.remove(); return; }
+      var p;
+      try { p = video.play(); } catch (e) { return; }
+      if (p && typeof p.then === "function"){
+        p.then(function(){
+          try { video.muted = false; } catch (e) {}
+          soundBar.remove();
+        }).catch(function(){ /* refused: the bar stays, the next tap tries again */ });
+      } else {
+        try { video.muted = false; } catch (e) {}
+        soundBar.remove();
+      }
+    });
+  }
+
+  /* Never ask the video element for fullscreen: on an iPhone that is the only
+     fullscreen available and it draws Apple's own player over the top. The CSS
+     overlay always runs; a real requestFullscreen is layered on top of it only
+     where the browser has one. */
+  function setFs(on){
+    wrapEl.classList.toggle("is-fs", on);
+    document.body.classList.toggle("is-fs-lock", on);
+    fsLabel.textContent = on ? "Exit full screen" : "Full screen";
+    fsBtn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
+  function wireFullscreen(){
+    fsBtn.hidden = false;
+    fsBtn.addEventListener("click", function(){
+      var on = !wrapEl.classList.contains("is-fs");
+      setFs(on);
+      try {
+        if (on && wrapEl.requestFullscreen) wrapEl.requestFullscreen();
+        else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+      } catch (e) {}
+    });
+    /* So Esc does not leave the overlay up over a page that is no longer
+       fullscreen. */
+    document.addEventListener("fullscreenchange", function(){
+      if (!document.fullscreenElement && wrapEl.classList.contains("is-fs")) setFs(false);
+    });
+  }
+
+  /* =========================================================================
+     reveal()
+     ========================================================================= */
+  /* The room is on screen from the moment they arrive: the wait happens inside
+     it, not in front of a closed door. This clears the waiting state. */
+  var sessionTarget = 0;
 
   function reveal(offsetSec){
     offsetSec = Math.max(0, offsetSec || 0);
+    rememberEntered(sessionTarget);
+
     cdStage.hidden = true;
     liveGrid.classList.remove("is-waiting");
+    wrapEl.classList.add("is-live");
+    meta.hidden = false;
+
     var poster = document.getElementById("poster");
     if (poster) poster.remove();
     var chatWait = document.getElementById("chatWait");
     if (chatWait) chatWait.remove();
-    meta.hidden = false;
+    chatBody.classList.remove("is-idle");
+    if (chatFoot) chatFoot.hidden = true;
+    if (chatForm) chatForm.hidden = false;
 
-    sessionOpenedAt = Date.now() - offsetSec * 1000;
-    buildPlayer(true, offsetSec);
-
-    if (EMBED_BASE){
-      soundBar.hidden = false;
-      soundBar.addEventListener("click", function(){
-        /* Rebuild unmuted at the point they had reached, not from the top. */
-        buildPlayer(false, (Date.now() - sessionOpenedAt) / 1000);
-        soundBar.remove();
-      });
+    buildPlayer(offsetSec);
+    if (WISTIA_ID){
+      wireSoundBar();
+      wireFullscreen();
     }
 
     badge.classList.add("is-live");
-    badge.innerHTML = '<span class="dot"></span>Live Now';
+    badge.textContent = "";
+    var d = document.createElement("span");
+    d.className = "dot";
+    badge.appendChild(d);
+    badge.appendChild(document.createTextNode("Live Now"));
 
     var late = offsetSec > 30;
     title.innerHTML = late ? 'Your Masterclass Is <em>Under Way</em>' : 'Your Masterclass Is <em>Ready</em>';
@@ -648,22 +1075,83 @@
     startEngagementTracking(offsetSec);
   }
 
-  /* ---- Which state are we in? -------------------------------------------- */
-  /* A start time in the past means they are late, not that they need a fresh
-     one. Arriving at 7:02 for a 7:00 session drops them two minutes in and
-     running, exactly as a live call would. Only once they are past
-     LATE_JOIN_MAX_MS is that session written off and a new one started.
-     Nothing stored at all means the browser lost the booking rather than that
-     no booking was made, so the session opens now instead of restarting a wait
-     they have already sat through. */
-  var now = Date.now();
-  var target = readStart();
+  /* =========================================================================
+     Which session are we opening?
+     ========================================================================= */
 
-  if (target - now > SLOT_MS + MIN_LEAD_MS) target = 0;   /* stale future, discard */
-  if (!target || now - target > LATE_JOIN_MAX_MS){
-    target = now;
-    rememberStart(target);
+  /* Resolved from three sources, in this order.
+
+     1. ?t= on the link, which is the only source that survives a change of
+        device. Accepts ISO or epoch ms, and is ignored if it is more than a day
+        from now or if it contains braces: an unresolved
+        {{contact.session_time_iso}} arriving literally must not be acted on.
+        Same guard as ?c=. The failure is then silent and safe, because the page
+        falls back to storage.
+     2. CHOICE_KEY, for a session booked for later. SESSION_KEY is no use here:
+        the countdown on the registration button rewrites it every second to the
+        next quarter hour, so a booked 4pm lives in CHOICE_KEY and nowhere else.
+     3. The caller falls back to readStart(). */
+  function bookedStart(now, params){
+    var raw = params.get("t");
+    if (raw && !/[{}]/.test(decodeURIComponent(raw))){
+      var v = /^\d+$/.test(raw) ? parseInt(raw, 10) : Date.parse(raw);
+      if (isFinite(v) && v > 0 && Math.abs(v - now) < 24 * 3600000) return v;
+    }
+    var choice = null;
+    try { choice = JSON.parse(sessionStorage.getItem(CHOICE_KEY) || "null"); } catch (e) {}
+    if (!choice) { try { choice = JSON.parse(localStorage.getItem(CHOICE_KEY) || "null"); } catch (e) {} }
+    if (choice && choice.jit === false && choice.at){
+      var b = parseInt(choice.at, 10);
+      if (isFinite(b) && b > 0) return b;
+    }
+    return 0;
   }
+
+  var now = Date.now();
+  var params = new URLSearchParams(window.location.search);
+  var previewIn = parseInt(params.get("in") || "", 10);
+  var target;
+
+  if (isFinite(previewIn) && previewIn >= 0 && previewIn <= 3600){
+    /* ?in=<seconds> is the demo hook. It wins over everything, resets on
+       reload, and is deliberately NOT persisted: a preview must not leave a
+       fake booking in the browser of someone who later arrives for a real
+       session. It can only ever delay the room opening. There is no parameter
+       that reveals a session early or skips part of one. */
+    target = now + previewIn * 1000;
+  } else {
+    target = bookedStart(now, params);
+    if (target){
+      /* A booked time skips the plausibility guard below. That guard exists to
+         throw away a stale rolling slot, and a session legitimately booked six
+         hours out would trip it. Persisted so a refresh without ?t= still
+         resolves to the same session. */
+      rememberStart(target);
+    } else {
+      target = readStart();
+      if (target - now > SLOT_MS + MIN_LEAD_MS) target = 0;   /* implausible, discard */
+    }
+
+    /* ENTERED_KEY is what tells a returning viewer from a late one. Closing the
+       tab and reopening it used to restart the masterclass at zero, and nothing
+       says "recording" louder than that. A browser that has already been inside
+       this session carries on wherever the clock is now, however long the tab
+       was shut. That is what a live call does. */
+    var returning = !!target && readEntered() === target &&
+                    (now - target) < MASTERCLASS_SECONDS * 1000;
+
+    /* A start time in the past means they are late, not that they need a fresh
+       one: arriving at 7:02 for a 7:00 session drops them two minutes in and
+       running. Nothing stored at all means the browser lost the booking rather
+       than that no booking was made, so the session opens now instead of
+       restarting a wait they have already sat through. */
+    if (!target || (!returning && now - target > LATE_JOIN_MAX_MS)){
+      target = now;
+      rememberStart(target);
+    }
+  }
+
+  sessionTarget = target;
 
   if (target <= now){
     reveal((now - target) / 1000);
@@ -675,7 +1163,7 @@
   tick();
 
   function tick(){
-    var remaining = target - Date.now();
+    var remaining = sessionTarget - Date.now();
     if (remaining <= 0){
       clearInterval(timer);
       reveal(0);

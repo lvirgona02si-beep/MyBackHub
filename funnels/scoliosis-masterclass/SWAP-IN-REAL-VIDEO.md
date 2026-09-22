@@ -1,63 +1,68 @@
-# Connecting the masterclass recording
+# The masterclass recording
 
 The recording exists: **1920x1080, 37:48 (2268 seconds), 268MB**. It is not in
 this repo. GitHub caps files at 100MB, and a 268MB direct-served MP4 is the
-wrong delivery method for a 38 minute session anyway.
+wrong delivery method for a 38 minute session anyway. Wistia re-encodes to
+H.264 and serves adaptive bitrate, so a phone is not pulling the master.
 
-It goes on a video host. Vimeo or Tella, per the client's decision.
+`.gitignore` blocks `*.mp4` and `*.mov` outright so a stray local copy cannot
+break a push.
 
 ## 1. Connected
 
-Hosted on Tella and wired:
+Hosted on Wistia and wired into `live.html`:
 
 ```js
-var EMBED_BASE = "https://www.tella.tv/video/vid_cmu716b8d00ww0agmcmnbhava/embed";
-var PLAYER     = "tella";
+var WISTIA_ID = "5i1tmdo2w2";
 ```
 
-`EMBED_BASE` carries no query string. The page appends its own per state:
-muted or unmuted, and the start offset.
+That is the only place the id is written. The page injects the per-media module
+from it at reveal time.
 
-`EMBED_BASE` carries no query string on purpose. Tella's own snippet hardcodes
-`muted=0&t=0`, which would defeat both the autoplay and the late join: browsers
-refuse unmuted autoplay, and a fixed `t=0` restarts the session from the top for
-everyone. The page supplies both per state instead.
+Dashboard: <https://dylana057.wistia.com/s/a51zcyxo12t79ew>
 
-## 2. The host must support seeking from the URL
+## 2. Why the `<wistia-player>` web component, not `E-v1.js`
 
-This is the one thing to confirm before committing to a host. Vimeo takes the
-offset as a media fragment (`#t=120s`), Tella as a query param (`&t=120`). Both
-are already handled in `embedSrc()`.
+Its options are plain HTML attributes, present *before* the player initialises,
+so they cannot arrive too late and be discarded the way an options object
+pushed to `_wq` can. It also exposes `currentTime`, `duration`, `muted` and
+`play()` the way a plain `<video>` does, which is what the watch tracking reads.
 
-Without URL seeking, late arrivals cannot be dropped into a session already in
-progress, and the whole simulated-live premise collapses.
+## 3. If an on-demand page is ever added, upload the file twice
 
-## 3. What is already handled
+A Wistia media carries its own player settings and **those beat the attributes
+set on an embed for anything not named explicitly**. The live room needs no
+controls and instant muted autoplay; a recording page needs a play button and a
+scrub bar. One media cannot be both.
 
-| Requirement | How |
+`live.html` names every control explicitly and sets it to `false`, so a change
+in the dashboard cannot put a progress bar over a live session. An on-demand
+page must name every control explicitly too, set to `true`, for the same reason
+in reverse.
+
+Two attribute spellings that were wrong for a long time in the reference build,
+and both leak the illusion:
+
+| Attribute | The wrong version |
 |---|---|
-| Autoplay on arrival | `autoplay=1&muted=1`. Browsers only permit autoplay while muted, and the click from the previous page does not carry as a gesture |
-| Starts at the exact session time | The offset is computed from the stored session start and passed to the embed |
-| Tap to unmute | The sound bar rebuilds the iframe unmuted **at the position reached**, not from the top |
+| `copy-link-and-thumbnail` | `copy-link-and-thumbnail-enabled`, which is ignored, so "Copy Link and Thumbnail" stayed in the right-click menu, naming the media and linking the file |
+| `wistia-logo` | Left out entirely. It sits outside the control bar, so switching every *control* off never touched it, and it is worst in fullscreen |
 
-The unmute rebuild works off `sessionOpenedAt`, the wall-clock time of video
-position zero. Storing that rather than a counter means the rebuild lands
-correctly however long someone takes to tap.
+## 4. The runtime corrects itself
 
-## 4. Progress tracking changed with the player
+`MASTERCLASS_SECONDS` starts at 2268 and is overwritten with Wistia's own
+`duration` the moment the player reports one. Every progress mark is a fraction
+of it, so **the video can be re-cut without touching this page, the tag
+thresholds, or anything in the CRM**.
 
-An embedded player exposes no playback position cross-origin, so progress is
-now **visible time on the page**, not the video's own clock. The counter only
-advances while the tab is in view.
+The one thing that does not recompute is `LATE_JOIN_MAX_MS`, because it is
+needed to decide which session to open before the player exists. It is
+`min(10 minutes, runtime)`, so it only matters if the recording is ever cut
+below ten minutes.
 
-That is less precise than reading `currentTime`, and it is the deliberate
-trade for using a host that handles delivery. It still rules out the case that
-matters: someone opening the room, walking away, and being tagged as having
-watched to the end.
+## 5. Still to do by hand: the chat timings
 
-## 5. Still to do by hand
-
-`HOST_MESSAGES` in `live.html`. Three of the four are PLACEHOLDER text:
+`HOST_MESSAGES` in `live.html`. Four of the five are PLACEHOLDER text:
 
 | `at` | Content |
 |---|---|
@@ -65,23 +70,62 @@ watched to the end.
 | `60` | PLACEHOLDER: why straight-spine therapy fails |
 | `420` | PLACEHOLDER: the first secret |
 | `900` | PLACEHOLDER: the rotation explanation |
+| `2100` | The checkout link. Real, but the time is a guess |
 
-All four fall inside the 2268 second runtime, so all four will fire. Watch
-the recording with a stopwatch and move each `at` to the moment the presenter
-reaches that point.
+**Anchor every cue to the caption track, never to the script.** Pull
 
-## 6. A note on the duration
+```
+https://fast.wistia.net/embed/captions/5i1tmdo2w2.vtt
+```
+
+and time each line against a phrase Dr. Mike actually says. Scaling from a
+presenter script's section budgets ran the reference build **up to 3:15 late**
+in the middle of its session, and the drift is not linear, so no single offset
+fixes it.
+
+Anything he **reads out loud** must be on screen *before* he reads it, 3 to 20
+seconds ahead of its anchor. Getting that backwards has him answering a message
+nobody sent yet, which is the single most obvious tell in the whole build. Mark
+those lines `// LOCKED` as you write them, not afterwards.
+
+Keep a companion table as the source of truth: line, old time, new time,
+speaker, message, **anchor phrase in the transcript**. Edit there first, then
+copy into the array. Re-cut the video and you re-pull the VTT; you do not
+rescale.
+
+## 6. Simulated attendees are wired but off
+
+`SIM_ON` is `false` and `SIM_MESSAGES` is empty. The dual-array tick, the
+separate fired maps and the host-only link gate are all in place, so writing
+the cast and flipping the flag is all that is needed.
+
+Two constraints on whoever writes that array:
+
+- Attendee lines go through `addMessage` with **no host flag**, and only a host
+  line can render a link. That is the safety property: nothing in the attendee
+  feed can ever become a clickable URL.
+- **This is a medical offer.** An invented attendee reporting that a treatment
+  worked is a fabricated patient testimonial, which is an FTC problem before it
+  is a taste problem. Arrivals, locations, logistics, questions and one honest
+  sceptic are the material. Outcomes are not.
+
+## 7. A note on the duration
 
 The recording is 37:48. The customer-facing copy says "around 35 minutes" in
 three places, and that is deliberate: it is a promise, not a measurement, and
-the client chose to leave it. Every timing constant uses the real 2268 seconds,
-so nothing in the tracking depends on the copy.
+the client chose to leave it. Every timing constant uses the real runtime, so
+nothing in the tracking depends on the copy.
 
-## 7. Then re-run the cases that need the real duration
+## 8. Cases to re-run once the chat is timed
 
-- Arrive 2 minutes late, join at 2:00 with the chat backlog present
-- Arrive past the 10 minute cap, fresh session from 0:00
-- Background the tab 5 minutes, the counter barely moves
-- Watch to 95 percent, `watched-complete` fires once
+1. `?in=30` — countdown hands over, player autoplays muted, sound bar works
+2. Register on a phone, open the join link on a laptop: `&t=` must hold the time
+3. Join 5 minutes late → seeked, chat backlogged, skipped marks **not** in the CRM
+4. Close the tab mid-session, reopen → continues, does not restart
+5. Background the tab 2 minutes → video pauses, `seconds_watched` does not advance
+6. iOS Safari: player not collapsed, fullscreen overlay carries no Apple chrome,
+   no long-press share sheet
+7. Right-click / player menu: no "Copy Link and Thumbnail", no Wistia badge
+8. Watch to 90 percent → `watched-complete` fires once
 
 `DEBUG_PINGS` is on; the console reports every send and skip.

@@ -1,6 +1,7 @@
 # Scoliosis Masterclass funnel
 
-Two pages, hand-written, no build step. Drop straight into GoHighLevel or any
+Four pages, hand-written, no build step. Every page is one self-contained
+file: open it in a browser and it runs. Drop straight into GoHighLevel or any
 static host.
 
 | File | Replaces |
@@ -38,38 +39,75 @@ Structure and copy rhythm follow the Golden Key workshop funnel. See
 The waiting room and session player. Modelled on Golden Key's `/uk-workshop/live`.
 
 - Continues the countdown the confirmation page started rather than beginning a
-  second one. The start time is written to both `sessionStorage` and
-  `localStorage` under `mbhMasterclassStart`, because someone clicking the
-  joining link from their email arrives in a fresh browser session.
+  second one, and resolves which session to open from three sources in order:
+  `?t=` on the link, then a booking in `mbhMasterclassChoice`, then the rolling
+  slot in `mbhMasterclassStart`. Everything is mirrored to both `sessionStorage`
+  and `localStorage`, because someone clicking the joining link from their email
+  arrives in a fresh browser session where `sessionStorage` is already gone.
+- `?t=` is the only source that survives a change of device, which is the case
+  of registering on a phone and opening the room on a laptop. It takes ISO or
+  epoch ms, and is ignored if it is more than a day out or contains braces, so
+  an unsubstituted `{{contact.session_time_iso}}` arriving literally falls back
+  to storage rather than being acted on.
 - Late arrivals are dropped into the session already in progress, the way they
   would be on a real live call. Past `LATE_JOIN_MAX_MS` they have missed too
   much to follow it and get a fresh session from the top.
+- `mbhMasterclassEntered` tells a **returning** viewer from a late one. A
+  browser that has already been inside this session carries on wherever the
+  clock is now, however long the tab was shut. Without it, closing the tab and
+  reopening restarted the masterclass at zero, and nothing says "recording"
+  louder than that.
+- `?in=<seconds>` is a demo hook: it starts a countdown of that length, wins
+  over everything, resets on reload and is deliberately never persisted, so a
+  preview cannot leave a fake booking in the browser of someone who later
+  arrives for a real session. It can only ever *delay* the room opening. There
+  is no parameter that reveals a session early or skips part of one.
 - Starts muted with a "Tap for sound" prompt, because browsers only permit
   autoplay while muted and the click that got them here does not carry across
-  the page load.
-- Host chat feed timed to seconds watched, so it stays in step whether someone
-  joins late or switches tabs.
-- Watch-progress milestones at 25 / 50 / 75 / 95 percent, fired to a Meta pixel
-  if one is present and to a GHL inbound webhook.
+  the page load. On that tap it plays first and unmutes second, and the bar only
+  goes once playback is actually under way.
+- Three layers of pause defence: a transparent shield over the video surface,
+  long-press suppression so iOS cannot raise its *Save Video / Copy / Share*
+  sheet, and a `pause` listener that restarts playback when the phone stops it
+  on its own.
+- Fullscreen is a CSS overlay on the panel, never `requestFullscreen` on the
+  video element. On an iPhone that is the only fullscreen available and it draws
+  Apple's own player over the top, scrub bar and all, in the middle of a session
+  billed as live.
+- Chat feed timed to **seconds of video watched**, not wall clock, so a line
+  lands against the right part of the talk whether someone joined late or
+  switched tabs.
+- Watch-progress milestones at 25 / 50 / 75 / 90 percent, fired to a Meta pixel
+  if one is present and to a GHL inbound webhook. Progress is the player's own
+  `currentTime`, taken with `Math.max` so a mark can never un-fire.
 
-**The chat is host-only by design.** There are no scripted attendee messages.
-Inventing patients who say a treatment worked is not something to ship on a
-medical offer. Real questions go to the live Q&A at the end.
+**`watched-complete` fires at 90 percent, not 100.** People close the tab in the
+last seconds of an outro they have effectively finished, and holding out for the
+full length loses most of the audience that actually watched it.
 
-### Three constants to set
+**The attendee chat is wired but switched off.** `SIM_ON` is `false` and
+`SIM_MESSAGES` is empty. The machinery is all there, so writing the cast and
+flipping the flag is all it takes. The constraint on whoever writes it: this is
+a medical offer, and an invented attendee reporting that a treatment worked is
+a fabricated patient testimonial, which is an FTC problem before it is a taste
+problem. Arrivals, questions and one honest sceptic are the material.
+
+The composer under the chat renders what is typed locally and posts it nowhere.
+
+### Constants to set
 
 At the top of the script in `live.html`:
 
-| Constant | Currently | Set to |
+| Constant | Currently | Notes |
 |---|---|---|
-| `MASTERCLASS_SRC` | Dr. Mike's welcome video, as a testable stand-in | The real masterclass recording |
-| `MASTERCLASS_SECONDS` | `99`, the stand-in's length | The real runtime in seconds |
-
-The recording is still being produced. When it lands, follow
-[SWAP-IN-REAL-VIDEO.md](SWAP-IN-REAL-VIDEO.md): two constants change, the
-progress marks and late-join cap recalculate themselves, and `HOST_MESSAGES`
-needs retiming against the actual recording.
+| `WISTIA_ID` | `5i1tmdo2w2` | Set. The only place the media id is written |
+| `MASTERCLASS_SECONDS` | `2268` | Overwritten by Wistia's own duration on load, so a re-cut needs no change |
 | `GHL_PROGRESS_WEBHOOK` | Set | Done |
+| `SESSION_ON_HOLD` | `false` | Flip to take sessions down for a day |
+| `HOST_MESSAGES` | 4 of 5 are PLACEHOLDER | Time against the caption track |
+
+Follow [SWAP-IN-REAL-VIDEO.md](SWAP-IN-REAL-VIDEO.md) for the chat timing work,
+which is the only thing left on this page.
 
 ### Progress payload
 
@@ -98,8 +136,11 @@ Nothing is sent unless a `contact_id` or `email` is known. An empty email
 reaching a Create/Update Contact action matches nothing and creates a blank
 record.
 
-The joining link in your email needs `?c={{contact.id}}` on it, or attendees
-arrive unidentified and no progress is recorded.
+The joining link in your email needs `?c={{contact.id}}&t={{contact.session_time_iso}}`
+on it. Without `?c=`, attendees arrive unidentified and no progress is
+recorded. Without `&t=`, someone opening the link on a different device from
+the one they registered on has no stored session there, and the room opens the
+moment it loads instead of at their session time.
 
 ## Checkout
 
@@ -127,17 +168,18 @@ a refund term, so the wrong number is a chargeback argument waiting to happen.
 
 ## Before launch
 
-- [ ] Add the Meta pixel to all four pages. `fbq` is only called if already
+- [ ] Add the Meta pixel base code to all four pages. `fbq` is only called if already
       defined, so nothing breaks until then, and the Meta fields in the
       registration payload stay empty strings.
 - [ ] Fire `Lead` and `Schedule` server-side from the Conversions API, passing
       the `event_id` from the registration payload. Neither fires from the
       browser here, on purpose.
-- [ ] Set both countdowns to the true session cadence. They currently roll to
-      the next `:00` or `:30`.
 - [ ] Set `LIVE_ROOM_URL` in `confirmation.html` if the waiting room is not at
       `live.html`, and repoint the footer nav on every page.
-- [ ] Set the three `live.html` constants above.
+- [ ] Time `HOST_MESSAGES` against the caption track. See
+      [SWAP-IN-REAL-VIDEO.md](SWAP-IN-REAL-VIDEO.md).
+- [ ] Add `session_time_iso` as a GHL contact field and map it from the
+      inbound webhook, or `&t=` on the joining link resolves to nothing.
 - [ ] Reconcile brand tokens against the brand guidelines.
       See [../../docs/brand-tokens.md](../../docs/brand-tokens.md).
 

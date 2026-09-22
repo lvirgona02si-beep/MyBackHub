@@ -7,8 +7,10 @@ Funnel buildout for MyBackHub, a scoliosis pain programme.
 ```
 funnels/                    one folder per funnel, self-contained
   scoliosis-masterclass/
-    registration.html
-    confirmation.html
+    registration.html       picks the session, posts to GHL
+    confirmation.html       counts down, hands over to the room
+    live.html               THE ROOM: player, chat, watch tracking
+    checkout.html           the $99 offer sold off the back of it
     media/                  video and imagery for this funnel only
 shared/                     assets used by more than one funnel
   brand/
@@ -24,7 +26,7 @@ Read [docs/conventions.md](docs/conventions.md) before adding anything.
 
 | Funnel | Pages | Status |
 |---|---|---|
-| [Scoliosis Masterclass](funnels/scoliosis-masterclass/) | Registration, confirmation, live room | Built. Progress webhook live; registration webhook still needed |
+| [Scoliosis Masterclass](funnels/scoliosis-masterclass/) | Registration, confirmation, live room, checkout | Built. Both webhooks live. Room is on Wistia; chat cue timings are the last open item |
 
 ## Docs
 
@@ -35,6 +37,7 @@ Read [docs/conventions.md](docs/conventions.md) before adding anything.
 | [Source funnels](docs/source-funnels.md) | Pages being replaced, and the structural reference |
 | [JIT webinar logic](docs/just-in-time-webinar-logic.md) | How the just-in-time funnel works, end to end |
 | [JIT implementation notes](docs/jit-implementation-notes.md) | Where this build diverges, and what is still needed |
+| [Simulated-live spec](SIMULATED-LIVE-WEBINAR-SPEC.md) | The master build spec the live room is built to |
 
 ## Working on the pages
 

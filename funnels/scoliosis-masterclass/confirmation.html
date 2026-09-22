@@ -372,8 +372,18 @@
 
   /* ---- Which session, and is it soon? ------------------------------------- */
   var now    = Date.now();
-  var target = readStart();
   var choice = readChoice();
+  var target = 0;
+
+  /* CHOICE_KEY first, and this order matters. SESSION_KEY holds a rolling
+     just-in-time slot that the registration countdown rewrites every second,
+     so a session booked for 4pm lives in CHOICE_KEY and nowhere else. Reading
+     SESSION_KEY first would show a 4pm booking the next quarter hour instead. */
+  if (choice && choice.jit === false && choice.at){
+    var b = parseInt(choice.at, 10);
+    if (isFinite(b) && b > 0) target = b;
+  }
+  if (!target) target = readStart();
 
   /* Nothing stored means the browser lost the booking, not that no booking was
      made. Open the room now rather than restarting a wait they already sat
@@ -409,7 +419,18 @@
   }
 
   var cid = contactId();
-  var liveUrl = LIVE_ROOM_URL + (cid ? (LIVE_ROOM_URL.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(cid) : "");
+
+  function param(url, k, v){
+    if (!v) return url;
+    return url + (url.indexOf("?") > -1 ? "&" : "?") + k + "=" + encodeURIComponent(v);
+  }
+
+  /* &t= carries the resolved session time onto the link. It is the only source
+     the room has that survives a change of device: someone who registered on a
+     phone and opens the room on a laptop has no storage there at all. The room
+     ignores it if it is more than a day out or contains braces, and falls back
+     to storage, so a bad value is silent rather than harmful. */
+  var liveUrl = param(param(LIVE_ROOM_URL, "c", cid), "t", new Date(target).toISOString());
 
   document.getElementById("joinEarly").href = liveUrl;
   document.getElementById("joinBtn").href   = liveUrl;

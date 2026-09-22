@@ -383,6 +383,14 @@
               <input id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" required>
             </div>
 
+            <!-- Honeypot. Off-screen rather than display:none, because some
+                 bots skip anything that is not rendered. A human never sees it
+                 and never fills it, so any value here is a bot. -->
+            <div aria-hidden="true" style="position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden">
+              <label for="hpField">Do not fill this in</label>
+              <input id="hpField" name="company_website" type="text" tabindex="-1" autocomplete="off">
+            </div>
+
             <div class="consent">
               <input id="consent" name="consent" type="checkbox" required>
               <label for="consent">By checking this box, you agree to receive messages from MyBackHub about this masterclass by email and SMS. Opt out anytime.</label>
@@ -685,9 +693,17 @@
   var MIN_LEAD_MS = 3 * 60 * 1000;
 
   /* Later slots, as offsets from now. All are comfortably longer than the
-     session itself, so two offered times never overlap. */
-  var OFFSETS_MS  = [60 * 60000, 3 * 3600000, 6 * 3600000];
-  var CUTOFF_HOUR = 21;          /* nothing scheduled past 9pm local */
+     session itself, so two offered times never overlap. Never offer an offset
+     shorter than the session: a 35 minute masterclass cannot start 15 minutes
+     after the previous one, and offering both reads as a recording rather than
+     a schedule. */
+  var OFFSETS_MS   = [60 * 60000, 3 * 3600000, 6 * 3600000];
+  var START_HOUR   = 9;            /* nothing offered before 9am local */
+  var CUTOFF_HOUR  = 21;           /* after 9pm, later slots roll to tomorrow */
+  var ROLLOVER_HOURS = [9, 12, 17];/* tomorrow: 9am / noon / 5pm */
+
+  /* Set these for the audience's timezone, not yours. They are read against
+     the visitor's own clock. */
 
   /* MyBackHub inbound webhook for registrations. Separate from the progress
      hook, so each GHL workflow receives only the payload it handles. */
@@ -699,11 +715,16 @@
 
   var CONFIRMATION_URL = "confirmation.html";
   var MARKET = "United States";   /* confirm before launch */
+  var SOURCE = "sc-masterclass-registration";
 
   /* Prefixed, so a second funnel on the same domain cannot collide with it. */
   var SESSION_KEY  = "mbhMasterclassStart";
   var CHOICE_KEY   = "mbhMasterclassChoice";
   var ATTENDEE_KEY = "mbhAttendee";
+
+  /* So the shared checkout page can route its "back" link to whichever funnel
+     sent the visitor. */
+  try { sessionStorage.setItem("mbhOriginPage", window.location.pathname); } catch (e) {}
 
   /* =========================================================================
      Storage. Every access is wrapped: private windows and blocked site data
@@ -752,24 +773,88 @@
     return r;
   }
 
+  function fixedSlot(dayOffset, hour){
+    var d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(hour, 0, 0, 0);
+    return d;
+  }
+
+  /* An offset landing outside the 9am to 9pm window rolls to a published slot
+     rather than being dropped. Without this, someone browsing at 8pm sees every
+     later offset fall past the cutoff and gets a near-empty dropdown that looks
+     broken, and someone browsing at 6am sees offsets of 7am and 9am that the
+     window forbids.
+
+     The fallbacks run today's remaining published hours before tomorrow's, so
+     an early-morning visitor is offered this morning rather than being pushed a
+     day out for no reason. */
   function laterSlots(soonest){
-    var now = new Date(), out = [], seen = {};
+    var now = new Date(), out = [], seen = {}, fallbacks = [], h;
+    /* Seeded with the soonest slot, so the same time is never offered twice. */
     seen[soonest] = true;
+
+    for (h = 0; h < ROLLOVER_HOURS.length; h++) fallbacks.push(fixedSlot(0, ROLLOVER_HOURS[h]));
+    for (h = 0; h < ROLLOVER_HOURS.length; h++) fallbacks.push(fixedSlot(1, ROLLOVER_HOURS[h]));
+
+    /* Against every slot already offered, not just the soonest. A substituted
+       fallback can land between two offsets, and two sessions 30 minutes apart
+       cannot both run a 35 minute masterclass: offering both reads as a
+       recording rather than a schedule. */
+    function tooClose(t){
+      if (Math.abs(t - soonest) < MASTERCLASS_SECONDS * 1000) return true;
+      for (var k = 0; k < out.length; k++){
+        if (Math.abs(t - out[k]) < MASTERCLASS_SECONDS * 1000) return true;
+      }
+      return false;
+    }
+
+    function nextFallback(){
+      while (fallbacks.length){
+        var t = fallbacks.shift().getTime();
+        if (t - now.getTime() < MIN_LEAD_MS) continue;                /* already gone */
+        if (seen[t] || tooClose(t)) continue;
+        return t;
+      }
+      return 0;
+    }
+
     for (var i = 0; i < OFFSETS_MS.length; i++){
       var d = roundUpTo30(new Date(now.getTime() + OFFSETS_MS[i]));
       var t = d.getTime();
-      if (d.getDate() !== now.getDate()) continue;                    /* same day only */
-      if (d.getHours() >= CUTOFF_HOUR) continue;
-      if (t - soonest < MASTERCLASS_SECONDS * 1000) continue;         /* no overlap */
-      if (seen[t]) continue;
+      var outside = d.toDateString() !== now.toDateString() ||
+                    d.getHours() >= CUTOFF_HOUR || d.getHours() < START_HOUR;
+      if (outside || seen[t] || tooClose(t)) t = nextFallback();
+      if (!t) continue;                                               /* fallbacks exhausted */
       seen[t] = true;
       out.push(t);
     }
+
+    /* A dropdown that is not in time order reads as broken whatever the times
+       are, and substituting fallbacks can put them out of order. */
+    out.sort(function(a, b){ return a - b; });
     return out;
   }
 
   function clockTime(t){
     return new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+
+  function isTomorrow(t){
+    var d = new Date(t), n = new Date();
+    return d.toDateString() !== n.toDateString();
+  }
+
+  /* "Today at 6:00 PM (in 1 hour)" / "Tomorrow at 9:00 AM". A published
+     timetable does not run at quarter past, which is why later slots round to
+     :00 or :30 while the soonest one keeps the finer rounding: it is labelled
+     as starting shortly rather than as a scheduled time. */
+  function slotLabel(t){
+    if (isTomorrow(t)) return "Tomorrow at " + clockTime(t);
+    var mins = Math.round((t - Date.now()) / 60000);
+    if (mins < 60) return "Today at " + clockTime(t) + " (in " + mins + " minutes)";
+    var hrs = Math.round(mins / 60);
+    return "Today at " + clockTime(t) + (hrs === 1 ? " (in 1 hour)" : " (in " + hrs + " hours)");
   }
 
   /* =========================================================================
@@ -782,19 +867,26 @@
   var sel = document.getElementById("session");
   var optJit = document.createElement("option");
   optJit.value = "jit";
-  optJit.textContent = "Starting shortly (" + clockTime(soonest) + ")";
+  optJit.textContent = "Today at " + clockTime(soonest) + " · starting shortly";
   sel.appendChild(optJit);
 
-  laterSlots(soonest).forEach(function(t){
+  var laterOpts = laterSlots(soonest).map(function(t){
     var o = document.createElement("option");
     o.value = String(t);
-    o.textContent = clockTime(t) + " today";
+    o.textContent = slotLabel(t);
     sel.appendChild(o);
+    return o;
   });
 
+  /* Note the asymmetry, and it has bitten before. SESSION_KEY is written only
+     for a just-in-time registration, because the countdown on the button below
+     rewrites it every second to the next quarter hour. A booked 4pm lives in
+     CHOICE_KEY and nowhere else, and a downstream page that reads only
+     SESSION_KEY will open the room against a stale rolling slot instead of the
+     booking. The confirmation page and the room both read CHOICE_KEY first. */
   function saveChoice(){
-    write(CHOICE_KEY, JSON.stringify({ jit: isJit, at: selected }));
-    rememberStart(selected);
+    write(CHOICE_KEY, JSON.stringify({ jit: isJit, at: selected, label: selectedLabel() }));
+    if (isJit) rememberStart(selected);
   }
 
   function selectedLabel(){
@@ -842,15 +934,28 @@
       if (cd2) cd2.textContent = "Session at " + clockTime(selected);
     }
 
+    /* The just-in-time slot rolls forward once it passes, whether or not it is
+       the one selected. Without the second branch the page clocks below freeze
+       at 00:00 as soon as the soonest slot goes by while a later one is
+       chosen, which is visible on the page for anyone who books ahead. */
+    if (selected <= now && isJit){
+      soonest = selected = soonestStart();
+      saveChoice();
+    } else if (soonest <= now){
+      soonest = soonestStart();
+    }
+
+    /* The soonest option carries a live countdown rather than a fixed time,
+       because it is sold as starting shortly, not as a scheduled slot. */
+    optJit.textContent = "Today at " + clockTime(soonest) + " · starts in " + countdown(soonest - now);
+
+    /* The later labels carry a relative distance too, so they drift if left
+       alone. Someone who sits on this page for half an hour would otherwise be
+       reading "in 1 hour" against a slot 30 minutes away. */
+    laterOpts.forEach(function(o){ o.textContent = slotLabel(parseInt(o.value, 10)); });
+
     var sv = countdown(soonest - now);
     pageClocks.forEach(function(el){ if (el) el.textContent = sv; });
-
-    /* The just-in-time slot rolls forward once it passes. */
-    if (isJit && selected <= now){
-      soonest = selected = soonestStart();
-      optJit.textContent = "Starting shortly (" + clockTime(soonest) + ")";
-      saveChoice();
-    }
   }
   tick();
   setInterval(tick, 1000);
@@ -905,6 +1010,80 @@
   }
 
   /* =========================================================================
+     Phone field
+
+     Loaded async with a hard timeout. A blocking <script src> for a third
+     party stalls the whole page, and therefore the form, for as long as the
+     browser takes to give up. One CDN outage took out a previous funnel's
+     opt-in rate for a day that way.
+
+     initPhoneField is idempotent and falls back to a plain field, so the form
+     is usable within PHONE_LIB_TIMEOUT_MS regardless and quietly upgrades if a
+     late response arrives.
+     ========================================================================= */
+  var PHONE_LIB_TIMEOUT_MS = 2500;
+  var phoneInput = document.getElementById("phone");
+  var iti = null;
+  var phoneReady = false;
+
+  function initPhoneField(){
+    if (phoneReady) return;
+    phoneReady = true;
+    if (!phoneInput) return;
+    if (typeof window.intlTelInput !== "function") return;   /* plain field, fine */
+    try {
+      iti = window.intlTelInput(phoneInput, {
+        initialCountry: "us",
+        preferredCountries: ["us", "ca", "gb", "au"],
+        separateDialCode: true,
+        autoPlaceholder: "aggressive"
+      });
+    } catch (e) { iti = null; }
+  }
+
+  (function loadPhoneLib(){
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/js/intlTelInputWithUtils.min.js";
+    s.async = true;
+    s.onload = initPhoneField;
+    s.onerror = initPhoneField;
+    document.head.appendChild(s);
+    var css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://cdn.jsdelivr.net/npm/intl-tel-input@23.8.0/build/css/intlTelInput.css";
+    document.head.appendChild(css);
+    setTimeout(initPhoneField, PHONE_LIB_TIMEOUT_MS);
+  })();
+
+  /* E.164 when the library is up, a lightly normalised raw value when it is
+     not. GHL defaults an unqualified number to its own account country, which
+     is how a US list ends up full of UK numbers. */
+  function phoneValue(){
+    if (iti){
+      try {
+        var n = iti.getNumber();
+        if (n) return n;
+      } catch (e) {}
+    }
+    var raw = (phoneInput.value || "").trim().replace(/[^\d+]/g, "");
+    if (!raw) return "";
+    if (raw.charAt(0) === "+") return raw;
+    if (raw.length === 10) return "+1" + raw;               /* NANP, matching MARKET */
+    return raw;
+  }
+
+  /* Sent alongside the number so the CRM does not have to infer it. */
+  function phoneCountry(){
+    if (iti){
+      try {
+        var d = iti.getSelectedCountryData() || {};
+        return { country: (d.iso2 || "").toUpperCase(), country_code: d.dialCode ? "+" + d.dialCode : "" };
+      } catch (e) {}
+    }
+    return { country: "", country_code: "" };
+  }
+
+  /* =========================================================================
      Submit
      ========================================================================= */
   var form   = document.getElementById("regForm");
@@ -919,6 +1098,11 @@
 
   form.addEventListener("submit", function(e){
     e.preventDefault();
+
+    /* A human never sees this field and never fills it. Fail silently: telling
+       a bot why it was rejected is how it learns to pass. */
+    var hp = document.getElementById("hpField");
+    if (hp && hp.value) return;
 
     var missing = [];
     [["fname","first name"],["lname","last name"],["email","email address"],["phone","mobile number"]]
@@ -940,7 +1124,7 @@
       first_name: document.getElementById("fname").value.trim(),
       last_name:  document.getElementById("lname").value.trim(),
       email:      document.getElementById("email").value.trim(),
-      phone:      document.getElementById("phone").value.trim()
+      phone:      phoneValue()
     };
     if (cid) attendee.contact_id = cid;
     write(ATTENDEE_KEY, JSON.stringify(attendee));
@@ -949,6 +1133,7 @@
     var when = new Date(selected);
     var tz = "";
     try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+    var region = phoneCountry();
 
     var payload = {
       type: "masterclass_registration",
@@ -957,6 +1142,16 @@
       last_name:  attendee.last_name,
       email:      attendee.email,
       phone:      attendee.phone,
+
+      /* Taken from the phone field. GHL defaults an unqualified number to its
+         own account country, which is how a US list fills up with UK numbers. */
+      country:      region.country,
+      country_code: region.country_code,
+
+      /* Written out so the CRM has the exact wording the visitor agreed to,
+         not a boolean whose meaning has to be reconstructed later. */
+      marketing_consent: true,
+      consent_text: (document.querySelector('.consent label') || {}).textContent || "",
 
       /* The session they picked. session_time_iso is the machine value; the
          local pair is what reminder emails should merge, because a visitor who
@@ -970,6 +1165,7 @@
       timezone: tz,
       timezone_offset_minutes: -when.getTimezoneOffset(),
 
+      source: SOURCE,
       market: MARKET,
       funnel_type: "Masterclass",
 
