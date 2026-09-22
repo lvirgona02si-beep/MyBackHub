@@ -33,7 +33,11 @@ Structure and copy rhythm follow the Golden Key workshop funnel. See
   rather than a live badge for a session hours away.
 - Live session countdown with a progress bar, flipping to an open/join state
   at zero, and a booked card for anything further out than one slot.
-- Google, Outlook and `.ics` calendar links generated from the session time. The
+- Five calendar providers generated from the session time: Google, Outlook.com,
+  Outlook for work, Yahoo and an `.ics` download for Apple and every desktop
+  client. We cannot detect what someone has installed, so all five are always
+  offered and only the **order** changes, putting the platform's own calendar
+  first. The
   ICS folds its content lines at 75 octets and escapes ICS grammar characters,
   because past that cap a calendar app drops the rest of the line silently.
   The joining link is deliberately not in the entry: it is built in the browser
@@ -179,6 +183,37 @@ The live page says **14 days** on its badge graphic and **30 days** in its FAQ,
 on the same screen. This build routes every mention through one constant,
 `GUARANTEE_DAYS`, currently 30. Confirm which is correct before launch: it is
 a refund term, so the wrong number is a chargeback argument waiting to happen.
+
+## Page weight and mobile
+
+Every page carries `charset`, `viewport`, the brand favicon as an inline data
+URI, `theme-color`, font preconnects and a shared mobile baseline block.
+
+**`checkout.html` had no `viewport` meta at all**, so phones were rendering it
+at desktop width and zooming out. That is fixed, and it is the first thing to
+check on any page pasted in from elsewhere.
+
+The favicon is inlined rather than linked because these pages get pasted into
+GoHighLevel, where a relative path would break and an absolute one would couple
+production to this repo. The master is only 24x24, which is all Squarespace
+holds for the live site. A larger source is needed before an
+`apple-touch-icon` is worth adding, or the home-screen icon will be soft.
+
+Images were recompressed in place, which took **358 KB off two pages**:
+
+| Page | Before | After |
+|---|---|---|
+| `registration.html` | 355 KB | 179 KB |
+| `checkout.html` | 288 KB | 114 KB |
+
+The logo strips quantise to 32 colours with an RMSE under 2, because they are
+white marks on transparency and never needed truecolour. The photographs are
+JPEG q72. Both were checked by eye, not just by the numbers. The images stay
+inline as data URIs for the same GoHighLevel reason as the favicon.
+
+The one remaining lever, if these ever need to be lighter, is moving the images
+to the client's CDN and referencing them absolutely. That is a hosting decision
+rather than a code one.
 
 ## Before launch
 
