@@ -342,22 +342,30 @@
     .chat-col{position:static}
     .chat{position:static; min-height:220px; max-height:380px}
 
-    /* In fullscreen on a phone a reserved column would leave the video a
-       sliver, so the chat floats over the right-hand edge of it instead. Same
-       strip, taken out of the video rather than out of the screen. */
+    /* Fullscreen on a phone stacks: video on top, chat underneath it, as two
+       separate panels. The chat never sits over the video. A side column here
+       would either cover what is being demonstrated or leave the video a
+       sliver, and neither is worth the screen it saves. */
+    .player-wrap.is-fs{
+      display:flex; flex-direction:column;
+      align-items:stretch; justify-content:flex-start;
+    }
     .player-wrap.is-fs .live-grid{
-      grid-template-columns:minmax(0,1fr); grid-template-areas:"player";
+      grid-template-columns:minmax(0,1fr);
+      grid-template-rows:auto minmax(0,1fr);
+      grid-template-areas:"player" "chat";
+      align-items:stretch; gap:0; width:100vw; height:100vh;
     }
-    .player-wrap.is-fs .chat-col{
-      position:absolute; top:0; right:0; bottom:0; height:auto;
-      width:min(42vw,300px); z-index:7;
-    }
+    /* Capped against the viewport HEIGHT, not just its width. In landscape a
+       full-width 16:9 video is taller than the screen, so without this the
+       chat is pushed off the bottom, which is the whole point of stacking. */
+    .player-wrap.is-fs .player{width:min(100vw, calc(58vh * 16 / 9)); margin-inline:auto}
+    .player-wrap.is-fs .chat-col{position:relative; height:auto; min-height:0; z-index:auto}
     .player-wrap.is-fs .chat{
       position:absolute; inset:0; min-height:0; max-height:none;
-      background:rgba(4,29,34,.84); backdrop-filter:blur(10px);
+      background:var(--room); backdrop-filter:none;
+      border:0; border-top:1px solid var(--line-dk); border-radius:0;
     }
-    /* The video no longer shares the width, so it can use all of it. */
-    .player-wrap.is-fs .player{width:min(100vw, calc(100vh * 16 / 9))}
   }
   @media (max-width:620px){
     body{font-size:16.5px}
