@@ -1,6 +1,6 @@
 # Scoliosis Masterclass funnel
 
-Four pages, hand-written, no build step. Every page is one self-contained
+Five pages, hand-written, no build step. Every page is one self-contained
 file: open it in a browser and it runs. Drop straight into GoHighLevel or any
 static host.
 
@@ -10,6 +10,7 @@ static host.
 | `confirmation.html` | `watch.mybackhub.com/thank-you-sc-masterclass` |
 | `live.html` | New. There is no equivalent on the live funnel. |
 | `checkout.html` | `payment.mybackhub.com/the-sc-masterclass-checkout` |
+| `thank-you.html` | New. Where the payment link redirects after a sale. |
 
 Structure and copy rhythm follow the Golden Key workshop funnel. See
 [../../docs/source-funnels.md](../../docs/source-funnels.md).
@@ -166,16 +167,38 @@ The low-ticket offer sold off the back of the masterclass: The Scoliosis
 Solution, six weeks of access, $99 at the masterclass price against $199
 normal and $905 stated value.
 
-- Order summary carries the full value stack, and the order bump (Scoliosis-Safe
-  Yoga and Breathing, $24.30) updates the total and the button live.
-- `currentTotal()` is the single source of the amount to charge. Read it when
-  confirming the payment intent rather than parsing the rendered text, so the
-  charge can never drift from a formatting change.
+- Order summary carries the full value stack. The order bump (Scoliosis-Safe
+  Yoga and Breathing, $24.30) is built but `BUMP_ENABLED` is `false`: the
+  payment link carries one fixed amount and cannot charge both $99.00 and
+  $123.30, so offering it would mean someone agreeing to the higher price and
+  being charged the lower one for two products. Turn it on in GoHighLevel
+  first, as a native bump or a second link, then flip the flag.
+- `currentTotal()` is the single source of the amount to charge.
 
-**There is no card form, deliberately.** `#payment-element` is a mount point
-for Stripe's Payment Element or GoHighLevel's. Hand-built card fields put the
-page in PCI scope and are never the right answer; the processor's hosted fields
-keep card data off this page entirely.
+**The payment form is embedded, not linked to.** `PAYMENT_LINK` is loaded in an
+iframe inside the order panel, so the card is typed on the processor's origin
+and this page stays out of PCI scope, without the customer leaving the page.
+
+**There is no contact step.** The hosted form collects first name, last name
+and email itself, so a step above it asking for the same three meant typing
+them twice. The frame's `src` carries what the funnel already knows
+(`firstName`, `lastName`, `email`, plus `contact_id`), so an attendee who
+registered arrives with it filled in and nothing to type but their card. A
+cold visitor types them once, in the frame. The hosted form has no phone
+field and ignores a `phone` parameter, so **this page no longer captures a
+phone number** — registration still does.
+
+Consequences worth knowing:
+
+- **Frame heights are fixed**, measured from the real form (1010px, 1060px
+  under 620px wide). A cross-origin frame cannot report its height, and the
+  hosted page sends no resize message. Re-measure if that form gains a field.
+- **The loading placeholder clears on a timer as well as on `load`.** That
+  event takes upwards of ten seconds on the hosted page and does not always
+  arrive at all. It also never takes pointer events, or it would have
+  swallowed every click on the form underneath it.
+- **A fallback link sits under the frame**, carrying the same prefill, for a
+  browser or extension that blocks the embed.
 
 ### The guarantee length contradicts itself
 
@@ -183,6 +206,26 @@ The live page says **14 days** on its badge graphic and **30 days** in its FAQ,
 on the same screen. This build routes every mention through one constant,
 `GUARANTEE_DAYS`, currently 30. Confirm which is correct before launch: it is
 a refund term, so the wrong number is a chargeback argument waiting to happen.
+
+## Thank you page
+
+Where the payment link redirects after a successful payment. Nothing links to
+it; it is reached only by that redirect, which is set on the GoHighLevel side
+once the domain is live. It carries `noindex`.
+
+- **It breaks out of the checkout's frame, first thing.** The payment form is
+  embedded, so the redirect after payment lands *inside* that iframe: without
+  this the thank you page would render in a 1010px box, inside the checkout,
+  with the old order summary still beside it.
+- Three next steps: check your email, book the welcome call, start week one.
+- Greets them by first name when the funnel knows it, from storage or `?fn=`,
+  and silently skips it when it does not. Written with `textContent`, because
+  a name off the query string is not markup.
+- The calendar is a **placeholder** until `CALENDAR_URL` is set. Paste the
+  GoHighLevel calendar's embed URL there and the real calendar replaces the
+  placeholder block; GHL's `form_embed.js` is loaded with it so the iframe
+  sizes itself. The placeholder is deliberately drawn as an obvious gap, so
+  nobody mistakes an unfinished page for a finished one.
 
 ## Page weight and mobile
 
@@ -217,7 +260,7 @@ rather than a code one.
 
 ## Before launch
 
-- [ ] Add the Meta pixel base code to all four pages. `fbq` is only called if already
+- [ ] Add the Meta pixel base code to all five pages. `fbq` is only called if already
       defined, so nothing breaks until then, and the Meta fields in the
       registration payload stay empty strings.
 - [ ] Fire `Lead` and `Schedule` server-side from the Conversions API, passing
@@ -229,6 +272,15 @@ rather than a code one.
       [SWAP-IN-REAL-VIDEO.md](SWAP-IN-REAL-VIDEO.md).
 - [ ] Add `session_time_iso` as a GHL contact field and map it from the
       inbound webhook, or `&t=` on the joining link resolves to nothing.
+- [ ] **Take the payment link out of TEST MODE.** The embedded form renders a
+      yellow TEST MODE badge, so it charges nothing. This is the one blocker
+      between the checkout looking finished and it taking money.
+- [ ] The embedded form's country selector defaults to **Australia**; it
+      should be the USA. No URL parameter changes it (`country`, `countryCode`,
+      `billing_country` and `address[country]` were all tried), and the frame
+      is cross-origin, so it is a GoHighLevel or Stripe account setting.
+- [ ] Set `CALENDAR_URL` in `thank-you.html` to the GoHighLevel calendar.
+- [ ] Point the payment link's post-payment redirect at `thank-you.html`.
 - [ ] Reconcile brand tokens against the brand guidelines.
       See [../../docs/brand-tokens.md](../../docs/brand-tokens.md).
 
