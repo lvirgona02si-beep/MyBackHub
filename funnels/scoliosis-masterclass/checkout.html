@@ -56,9 +56,11 @@
   }
   .offer .dot{width:8px; height:8px; border-radius:50%; background:var(--coral); animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  .offer h1{color:#fff; font-size:clamp(26px,3.5vw,40px); font-weight:800}
+  /* Floored at 31px rather than 26px. This is the first line on the page that
+     has to carry the offer, and 26px on a phone read like a subheading. */
+  .offer h1{color:#fff; font-size:clamp(31px,3.9vw,44px); font-weight:800; letter-spacing:-.025em}
   .offer h1 em{font-style:normal; color:var(--teal-lt)}
-  .offer .sub{margin:14px auto 0; max-width:56ch; font-size:17px}
+  .offer .sub{margin:15px auto 0; max-width:54ch; font-size:17px; text-wrap:pretty}
 
   .prices{display:flex; align-items:center; justify-content:center; gap:clamp(14px,2.4vw,30px); margin-top:24px; flex-wrap:wrap}
   .pr{text-align:center}
@@ -182,8 +184,34 @@
   @media (max-width:620px){
     body{font-size:16.5px}
     .row2{grid-template-columns:1fr; gap:0}
+    /* The three prices were a wrapping flex row with the separators hidden, so
+       on a narrow screen two sat on one line and the third dropped underneath
+       on its own. They are a comparison, and a comparison that wraps is not
+       one. Three fixed columns instead.
+
+       Labels and values are placed on explicit rows, so "Masterclass price"
+       running to two lines cannot push its own figure out of line with the
+       other two. Children of .prices are .pr, .prsep, .pr, .prsep, .pr, which
+       is why the nth-child numbers skip. */
+    .prices{
+      display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:auto auto;
+      gap:5px 10px; align-items:start; margin-top:22px;
+    }
     .prsep{display:none}
-    .prices{gap:18px}
+    .pr{display:contents}
+    .prices > .pr:nth-child(1) .lab{grid-area:1/1}
+    .prices > .pr:nth-child(1) .v  {grid-area:2/1}
+    .prices > .pr:nth-child(3) .lab{grid-area:1/2}
+    .prices > .pr:nth-child(3) .v  {grid-area:2/2}
+    .prices > .pr:nth-child(5) .lab{grid-area:1/3}
+    .prices > .pr:nth-child(5) .v  {grid-area:2/3}
+    .pr .lab{font-size:9.5px; letter-spacing:.1em; line-height:1.3}
+    .pr .v{align-self:end}
+
+    /* The logo and the SSL line were wrapping to two left-aligned lines with
+       the second one hanging off the mark above it. Centred when they stack. */
+    .top .wrap{justify-content:center; gap:5px 14px}
+    .secure{font-size:12.5px}
     .frow{flex-direction:column; align-items:flex-start}
     .guar{grid-template-columns:1fr}
   }
