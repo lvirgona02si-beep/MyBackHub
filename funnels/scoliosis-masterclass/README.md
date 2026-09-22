@@ -28,9 +28,17 @@ Structure and copy rhythm follow the Golden Key workshop funnel. See
 
 ## Confirmation page
 
+- Resolves the session from `?t=` on the link first, then storage, so someone
+  who booked on their phone and opened the page on a laptop sees their booking
+  rather than a live badge for a session hours away.
 - Live session countdown with a progress bar, flipping to an open/join state
-  at zero. The current page never tells anyone when their session is.
-- Google, Outlook and `.ics` calendar links generated from the session time.
+  at zero, and a booked card for anything further out than one slot.
+- Google, Outlook and `.ics` calendar links generated from the session time. The
+  ICS folds its content lines at 75 octets and escapes ICS grammar characters,
+  because past that cap a calendar app drops the rest of the line silently.
+  The joining link is deliberately not in the entry: it is built in the browser
+  where `{{contact.id}}` cannot resolve, so it would be the generic link and the
+  attendee arriving on it would be anonymous to the room.
 - Four-item checklist rewritten for an exercise-based session.
 - Dr. Mike's welcome video carried across from the current page.
 
@@ -73,7 +81,13 @@ The waiting room and session player. Modelled on Golden Key's `/uk-workshop/live
 - Fullscreen is a CSS overlay on the panel, never `requestFullscreen` on the
   video element. On an iPhone that is the only fullscreen available and it draws
   Apple's own player over the top, scrub bar and all, in the middle of a session
-  billed as live.
+  billed as live. The chat stays on in fullscreen as a strip down the right: a
+  reserved column on desktop, and floated over the right-hand edge of the video
+  on a phone, where a reserved column would leave the video a sliver.
+- A booking further out than one slot is handed back to the holding page, which
+  has the state that fits it. The room has nothing to count down to in front of
+  a player it has no reason to open, and a next-day booking used to render as
+  `Starting in 1092:04`.
 - Chat feed timed to **seconds of video watched**, not wall clock, so a line
   lands against the right part of the talk whether someone joined late or
   switched tabs.

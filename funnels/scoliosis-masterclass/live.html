@@ -229,13 +229,29 @@
     position:fixed; inset:0; z-index:9999; max-width:none; margin:0;
     background:#000; display:flex; align-items:center; justify-content:center; padding:0;
   }
-  .player-wrap.is-fs .live-grid{grid-template-columns:minmax(0,1fr); grid-template-areas:"player"; gap:0; width:100%}
-  .player-wrap.is-fs .chat-col,
+  /* The chat stays on in fullscreen, as a strip down the right. A live room
+     with the room switched off is just a video, and fullscreen is exactly when
+     people settle in to watch. */
+  .player-wrap.is-fs .live-grid{
+    grid-template-columns:minmax(0,1fr) clamp(260px,22vw,360px);
+    grid-template-areas:"player chat";
+    gap:0; width:100vw; height:100vh; align-items:center;
+  }
   .player-wrap.is-fs .cd,
   .player-wrap.is-fs .meta{display:none}
+
+  /* Width first, height follows from the ::before ratio, so capping the width
+     at the viewport height's worth of 16:9 is what keeps the video inside the
+     screen instead of overflowing past the bottom. */
   .player-wrap.is-fs .player{
-    width:min(100vw, calc(100vh * 16 / 9)); margin-inline:auto;
+    width:min(100%, calc(100vh * 16 / 9)); margin-inline:auto;
     border:0; border-radius:0; box-shadow:none;
+  }
+  .player-wrap.is-fs .chat-col{position:relative; height:100vh}
+  .player-wrap.is-fs .chat{
+    position:absolute; inset:0; min-height:0; max-height:none;
+    border:0; border-left:1px solid var(--line-dk); border-radius:0;
+    background:rgba(4,29,34,.94);
   }
 
   /* ---------- Chat ---------- */
@@ -321,6 +337,23 @@
     /* Back into static flow, bounded, so it scrolls rather than running away. */
     .chat-col{position:static}
     .chat{position:static; min-height:220px; max-height:380px}
+
+    /* In fullscreen on a phone a reserved column would leave the video a
+       sliver, so the chat floats over the right-hand edge of it instead. Same
+       strip, taken out of the video rather than out of the screen. */
+    .player-wrap.is-fs .live-grid{
+      grid-template-columns:minmax(0,1fr); grid-template-areas:"player";
+    }
+    .player-wrap.is-fs .chat-col{
+      position:absolute; top:0; right:0; bottom:0; height:auto;
+      width:min(42vw,300px); z-index:7;
+    }
+    .player-wrap.is-fs .chat{
+      position:absolute; inset:0; min-height:0; max-height:none;
+      background:rgba(4,29,34,.84); backdrop-filter:blur(10px);
+    }
+    /* The video no longer shares the width, so it can use all of it. */
+    .player-wrap.is-fs .player{width:min(100vw, calc(100vh * 16 / 9))}
   }
   @media (max-width:620px){
     body{font-size:16.5px}
@@ -617,9 +650,16 @@
   function rememberEntered(t){ write(ENTERED_KEY, String(t)); }
 
   function pad(n){ return String(n).padStart(2, "0"); }
+
+  /* The hour branch is a backstop. Anything far enough out to need it is handed
+     back to the holding page below, but without it a start eighteen hours away
+     renders as "1092:04", which reads as broken rather than as a long wait. */
   function fmt(ms){
     var total = Math.max(0, Math.round(ms / 1000));
-    return pad(Math.floor(total / 60)) + ":" + pad(total % 60);
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    return h > 0 ? h + ":" + pad(m) + ":" + pad(s) : pad(m) + ":" + pad(s);
   }
 
   /* =========================================================================
@@ -1110,9 +1150,10 @@
   var now = Date.now();
   var params = new URLSearchParams(window.location.search);
   var previewIn = parseInt(params.get("in") || "", 10);
+  var isPreview = isFinite(previewIn) && previewIn >= 0 && previewIn <= 3600;
   var target;
 
-  if (isFinite(previewIn) && previewIn >= 0 && previewIn <= 3600){
+  if (isPreview){
     /* ?in=<seconds> is the demo hook. It wins over everything, resets on
        reload, and is deliberately NOT persisted: a preview must not leave a
        fake booking in the browser of someone who later arrives for a real
@@ -1152,6 +1193,26 @@
   }
 
   sessionTarget = target;
+
+  /* A booking further out than one slot has no state in this room. There is
+     nothing to count down to in front of a player we have no reason to open,
+     and a next-day booking rendered as "Starting in 1092:04". Hand it back to
+     the holding page, which has the state that fits it: the booked card, the
+     time in words and the calendar links. `?c=` and `?t=` go with it so
+     nothing is lost on the way.
+
+     Both pages use the same threshold, so no loop is possible: the holding
+     page only offers a way in here once its own target has arrived, and by
+     then this condition is false. The preview hook is exempt, because it is
+     capped at an hour and is meant to be watched from this page. */
+  if (!isPreview && target - now > SLOT_MS + MIN_LEAD_MS){
+    var back = CONFIRMATION_URL;
+    var who  = getAttendee();
+    if (who.contact_id) back += (back.indexOf("?") > -1 ? "&" : "?") + "c=" + encodeURIComponent(who.contact_id);
+    back += (back.indexOf("?") > -1 ? "&" : "?") + "t=" + encodeURIComponent(new Date(target).toISOString());
+    window.location.replace(back);
+    return;
+  }
 
   if (target <= now){
     reveal((now - target) / 1000);

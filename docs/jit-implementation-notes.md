@@ -68,6 +68,56 @@ recorded against that work: this is a medical offer, so an invented attendee
 reporting that a treatment worked is a fabricated patient testimonial, which is
 an FTC problem before it is a taste problem.
 
+## Fixes ported from the Golden Key handover, 22 Sep 2026
+
+Three faults found by live testing of the reference funnel *after* the spec was
+written, so this build had inherited all three.
+
+**A booking further out than one slot is handed back to the holding page.** The
+room is exempt from the plausibility guard for a booked start, which is right,
+but it had no state for a session that is not about to begin: it went straight
+to a countdown in front of a player it had no reason to open, and a next-day
+booking rendered as `Starting in 1092:04`. Both pages use the same threshold
+(`SLOT_MS + MIN_LEAD_MS`, 18 minutes) and `?c=` and `?t=` travel with the
+redirect. `?in=` is exempt, being capped at an hour and meant to be watched from
+the room. Both countdown formatters also grew an hour branch as a backstop.
+
+No loop is possible, and it is checked rather than assumed: the holding page
+only offers a way into the room once its own target has arrived, by which point
+the room's redirect condition is false. Verified minute by minute from -5 to
++1200.
+
+**The holding page reads `?t=` off the link.** Storage belongs to the browser
+that registered. Someone who booked tomorrow morning and opened the page on a
+second device had nothing to find, and the page read that as the booking being
+*lost* rather than as it being somewhere else, falling through to the branch
+that opens the session immediately. They were shown a live badge and a join
+button for a session hours away. Same guards as the room: ISO or epoch, ignored
+beyond a day either side, ignored outright if the merge field arrived
+unresolved. Storage remains the fallback, so a link without `?t=` behaves as
+before.
+
+**Known limit, unchanged:** a second-device visitor arriving with *no* `?t=` at
+all still gets the wrong screen. Nothing on a static page can fix that. There is
+no booking to read and no API key to look one up with.
+
+**The ICS was silently truncating.** `DESCRIPTION:` ran to 162 octets against a
+75 octet cap, past which a calendar app drops the rest of the line rather than
+erroring. `icsFold()` folds content lines with a single leading space on each
+continuation, counted in octets and stepped by code point so a surrogate pair is
+never split. `icsEscape()` escapes the ICS grammar characters, which matters
+here because the event title legitimately contains a comma.
+
+The joining link stays out of the calendar entry deliberately. The room link
+ends `?c={{contact.id}}` and the entry is built in the browser, where there is
+no merge field to resolve, so any embedded link would be the generic one and the
+attendee arriving on it would be anonymous to the room. The invite says where
+the real link is instead.
+
+Two gaps this surfaced on our build and fixed at the same time: the booked card
+said "today" for a next-day session, and a booked registrant returning at their
+session time landed on that card with no way through.
+
 ## Open decisions
 
 **The Q&A.** Registration, confirmation and the room all describe a live Q&A

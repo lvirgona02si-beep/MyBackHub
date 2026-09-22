@@ -373,13 +373,29 @@
   /* ---- Which session, and is it soon? ------------------------------------- */
   var now    = Date.now();
   var choice = readChoice();
+  var params = new URLSearchParams(window.location.search);
   var target = 0;
 
-  /* CHOICE_KEY first, and this order matters. SESSION_KEY holds a rolling
+  /* ?t= on the link first, exactly as the room does it and with the same
+     guards. Storage belongs to the browser that registered, so someone who
+     booked tomorrow morning and then opened this page on a different device
+     had no booking to find. This page read that as the booking being *lost*
+     rather than as it simply being somewhere else, fell through to the branch
+     that opens the session immediately, and showed a "Live Now" badge and a
+     join button for a session still hours away. That branch is right for a
+     browser that has lost a just-in-time slot and wrong for every booking made
+     for later. */
+  var raw = params.get("t");
+  if (raw && !/[{}]/.test(decodeURIComponent(raw))){
+    var v = /^\d+$/.test(raw) ? parseInt(raw, 10) : Date.parse(raw);
+    if (isFinite(v) && v > 0 && Math.abs(v - now) < 24 * 3600000) target = v;
+  }
+
+  /* Then CHOICE_KEY, and this order matters. SESSION_KEY holds a rolling
      just-in-time slot that the registration countdown rewrites every second,
      so a session booked for 4pm lives in CHOICE_KEY and nowhere else. Reading
      SESSION_KEY first would show a 4pm booking the next quarter hour instead. */
-  if (choice && choice.jit === false && choice.at){
+  if (!target && choice && choice.jit === false && choice.at){
     var b = parseInt(choice.at, 10);
     if (isFinite(b) && b > 0) target = b;
   }
@@ -441,8 +457,54 @@
            pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + "00Z";
   }
   var evTitle = "Scoliosis Masterclass with Dr. Michael Gardner, MD";
-  var evBody  = "The 3 secrets to getting out of scoliosis pain, without surgery. Your joining link is in your inbox.";
+
+  /* The joining link is deliberately NOT in the calendar entry. The room link
+     ends ?c={{contact.id}}, and this entry is built in the browser where there
+     is no merge field to resolve, so any link embedded here would be the
+     generic one. An attendee arriving on that is anonymous to the room: no
+     progress pings, no watch tags, and nothing for the follow-up to branch on.
+     Say where the real link is instead. This is exactly the kind of thing
+     somebody "fixes" later, hence the comment. */
+  var evBody  = "Your 35 minute masterclass with Dr. Michael Gardner. " +
+                "The joining link is in your confirmation email and is unique to you, " +
+                "so keep that email to hand.";
   var start   = new Date(target);
+
+  /* ICS grammar characters. A bare comma or semicolon in a value is a field
+     separator, so it has to be escaped or the entry parses wrong. */
+  function icsEscape(s){
+    return String(s)
+      .replace(/\\/g, "\\\\")
+      .replace(/;/g, "\\;")
+      .replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+
+  /* Content lines cap at 75 OCTETS. Past that a calendar app silently drops
+     the rest of the line rather than erroring, so a description long enough to
+     be useful is a description that arrives truncated. Folding splits the line
+     and starts each continuation with a single space, which the parser strips
+     back off.
+
+     Counted in octets rather than characters, so a curly quote or a degree
+     sign cannot push a line over unnoticed, and stepped by code point so a
+     surrogate pair is never split down the middle. */
+  function icsFold(line){
+    var out = "", used = 0, i = 0;
+    while (i < line.length){
+      var cp = line.codePointAt(i);
+      var step = cp > 0xFFFF ? 2 : 1;
+      var n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+      if (used + n > 75){
+        out += "\r\n ";
+        used = 1;              /* the leading space counts toward the next 75 */
+      }
+      out += line.substr(i, step);
+      used += n;
+      i += step;
+    }
+    return out;
+  }
 
   var ics = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MyBackHub//Masterclass//EN",
@@ -451,10 +513,10 @@
     "DTSTAMP:" + stamp(new Date()),
     "DTSTART:" + stamp(start),
     "DTEND:" + stamp(ends),
-    "SUMMARY:" + evTitle,
-    "DESCRIPTION:" + evBody,
+    "SUMMARY:" + icsEscape(evTitle),
+    "DESCRIPTION:" + icsEscape(evBody),
     "END:VEVENT", "END:VCALENDAR"
-  ].join("\r\n");
+  ].map(icsFold).join("\r\n");
 
   ["", "2"].forEach(function(suffix){
     var g = document.getElementById("calGoogle" + suffix);
@@ -486,12 +548,31 @@
     }
   });
 
+  function openNow(){
+    cdStage.hidden = true;
+    bookedStage.hidden = true;
+    joinStage.hidden = false;
+    title.innerHTML = 'Your Masterclass Is <em>Live</em>';
+    sub.textContent = "Dr. Mike is starting now. Click through and take a seat.";
+  }
+
+  /* ---- The booked time has arrived --------------------------------------- */
+  /* Whether it was booked or just-in-time, the state that fits a session
+     already running is "go in", not a card describing it. Without this a
+     booked registrant coming back at their session time landed on the booked
+     card with no way through, and the only route in was the emailed link. */
+  if (target <= now){ openNow(); return; }
+
   /* ---- Fixed later slot: no countdown, just the booked card --------------- */
   if (!isJit){
     cdStage.hidden = true;
     bookedStage.hidden = false;
+    /* "today" was hardcoded, which reads as plainly wrong on a next-day
+       booking, and next-day is the case this branch now handles most. */
+    var sameDay = start.toDateString() === new Date(now).toDateString();
     document.getElementById("bookedWhen").textContent =
-      start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + " today";
+      start.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) +
+      (sameDay ? " today" : start.toLocaleDateString([], { weekday: "long", day: "numeric", month: "long" }).replace(/^/, " on "));
     title.innerHTML = 'Your Seat Is <em>Booked</em>';
     sub.textContent = "We have emailed your joining link. Come back to this page, or use the link, a few minutes before your session.";
     return;
@@ -503,14 +584,17 @@
   function tick(){
     var left = Math.floor((target - Date.now()) / 1000);
     if (left <= 0){
-      cdStage.hidden = true;
-      joinStage.hidden = false;
-      title.innerHTML = 'Your Masterclass Is <em>Live</em>';
-      sub.textContent = "Dr. Mike is starting now. Click through and take a seat.";
+      openNow();
       clearInterval(timer);
       return;
     }
-    cdBig.textContent = pad(Math.floor(left / 60)) + ":" + pad(left % 60);
+    /* Hour branch as a backstop. Anything this far out gets the booked card
+       rather than a countdown, but without it a long wait would render as
+       "1092:04", which reads as broken rather than as eighteen hours. */
+    var h = Math.floor(left / 3600);
+    cdBig.textContent = h > 0
+      ? h + ":" + pad(Math.floor((left % 3600) / 60)) + ":" + pad(left % 60)
+      : pad(Math.floor(left / 60)) + ":" + pad(left % 60);
     var elapsed = (Date.now() - windowStart) / (target - windowStart);
     cdFill.style.width = Math.max(0, Math.min(100, elapsed * 100)).toFixed(1) + "%";
   }
