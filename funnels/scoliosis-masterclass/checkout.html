@@ -106,6 +106,39 @@
   .paymount .d{font-size:14.5px; color:var(--muted); margin-top:7px; max-width:44ch; margin-inline:auto; line-height:1.5}
   .cards{display:flex; gap:7px; justify-content:center; margin-top:15px; flex-wrap:wrap}
   .cards span{font-family:var(--f-display); font-size:10.5px; font-weight:700; letter-spacing:.07em; color:var(--muted); border:1px solid var(--line); border-radius:5px; padding:5px 9px; background:#fff}
+  .paymount .btn{margin-top:18px}
+  .mounterr{margin-top:11px; font-size:14px; font-weight:600; color:#B3261E}
+
+  /* The processor's hosted form, embedded. Height is fixed because the frame is
+     cross-origin and cannot tell us how tall it is; these are measured from the
+     real form, with headroom for a card error or an extra payment method. The
+     frame scrolls on its own if it ever needs more. */
+  .payframe{
+    border:1.5px solid var(--line); border-radius:var(--r); background:#fff;
+    overflow:hidden; position:relative; min-height:1010px;
+  }
+  .payframe iframe{display:block; width:100%; height:1010px; border:0}
+  .payframe__load{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    gap:10px; background:#FCFBF9; color:var(--muted); font-size:14.5px; text-align:center; padding:20px;
+  }
+  .spin{
+    width:17px; height:17px; flex:none; border-radius:50%;
+    border:2.5px solid rgba(1,152,169,.25); border-top-color:var(--teal);
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .framefoot{margin-top:13px}
+  .framefoot__note{
+    background:#FFF6F5; border:1px solid rgba(255,94,80,.35); border-radius:8px;
+    padding:10px 12px; font-size:14px; color:var(--body); margin-bottom:9px;
+  }
+  .framefoot__fb{font-size:13.5px; color:var(--muted); text-align:center}
+  .framefoot__fb a, .linkbtn{
+    color:var(--teal-dk); font-weight:700; text-decoration:underline; text-underline-offset:2px;
+  }
+  .linkbtn{background:none; border:0; padding:0; font:inherit; cursor:pointer}
 
   /* order bump */
   .bump{border:2px dashed var(--coral); border-radius:12px; background:#FFF6F5; padding:18px; margin-bottom:20px}
@@ -191,6 +224,11 @@
     .grid{grid-template-columns:1fr}
     .sumcol{position:static; order:-1}
   }
+  @media (max-width:620px){
+    .payframe{min-height:1060px}
+    .payframe iframe{height:1060px}
+  }
+
   @media (max-width:620px){
     body{font-size:16.5px}
     .row2{grid-template-columns:1fr; gap:0}
@@ -324,13 +362,39 @@
               </div>
             </div>
 
-            <!-- Card fields are never hand-built. This is the mount point for
-                 the processor's own hosted fields, which keeps card data out of
-                 this page entirely and is what PCI requires. -->
+            <!-- Card fields are never hand-built. The processor's own hosted
+                 page is embedded here in a frame, so the card is typed on their
+                 origin and never touches this page, which is what PCI requires.
+                 Embedded rather than linked to, so nobody leaves this page.
+
+                 The frame is built in script, not written here, because its src
+                 carries the name and email typed above. Loading it empty would
+                 make the customer type those a second time inside the frame. -->
             <div class="paymount" id="payment-element">
-              <div class="t">Card details on the next step</div>
-              <div class="d">The button below opens our secure payment page, where you enter your card. Card data never touches this page.</div>
+              <div class="t">Your secure payment form</div>
+              <div class="d">Fill in your details above and it loads right here, already filled in. Your card is entered on our processor&rsquo;s secure form, never on this page.</div>
               <div class="cards"><span>VISA</span><span>MASTERCARD</span><span>AMEX</span><span>DISCOVER</span><span>APPLE PAY</span><span>GOOGLE PAY</span></div>
+              <button class="btn" type="button" id="buy">Yes, Sign Me Up<span class="sub" id="btnSub">$99.00 &middot; One payment</span></button>
+              <p class="mounterr" id="mountErr" hidden></p>
+            </div>
+
+            <!-- Filled in by script once the details above are complete. -->
+            <div class="payframe" id="payFrame" hidden>
+              <div class="payframe__load" id="frameLoad">
+                <span class="spin" aria-hidden="true"></span>
+                Loading your secure payment form&hellip;
+              </div>
+            </div>
+
+            <div class="framefoot" id="frameFoot" hidden>
+              <p class="framefoot__note" id="staleNote" hidden>
+                You changed your details above.
+                <button type="button" class="linkbtn" id="refreshFrame">Update the payment form</button>
+              </p>
+              <p class="framefoot__fb">
+                Form not showing?
+                <a href="#" id="payFallback" rel="noopener">Open the secure payment page instead</a>
+              </p>
             </div>
 
           </div>
@@ -360,8 +424,7 @@
             </div>
             <div class="saved" id="saved">You save $806 today</div>
 
-            <button class="btn" type="button" id="buy" style="margin-top:16px">Yes, Sign Me Up<span class="sub" id="btnSub">$99.00 &middot; One payment</span></button>
-            <p class="btnnote">Instant access. Nothing ships.</p>
+            <p class="btnnote" style="margin-top:14px">Instant access. Nothing ships.</p>
           </div>
         </div>
 
@@ -532,32 +595,162 @@
     el.textContent = String(GUARANTEE_DAYS);
   });
 
-  /* Hand off to the hosted payment page.
+  /* ---------------------------------------------------------------------
+     The hosted payment form, embedded.
 
-     Same page, not a new tab: a payment is the end of this page's job, and a
-     second tab leaves the customer with two of them and no idea which one
-     completed.
+     The customer stays on this page: the processor's own form is loaded in a
+     frame inside step 2, so the card is typed on their origin (this page stays
+     out of PCI scope) without a second page load.
+
+     The frame's src carries the name and email from step 1, which the hosted
+     form reads and fills in. Without that the customer types the same three
+     fields twice, once here and once in the frame. The hosted form asks for
+     first name, last name and email only, so those three are all it takes for
+     the customer to have nothing left to type but their card.
 
      contact_id rides along when the funnel knows it, so the purchase attaches
      to the contact who watched the masterclass rather than creating a second
      record. On a cold registration there is no id, because GoHighLevel mints
      it server-side and never hands it back to the browser, so the payment
-     page matches on the email the customer types there instead. */
-  document.getElementById("buy").addEventListener("click", function(){
-    if (!PAYMENT_LINK) return;
-    var url = PAYMENT_LINK;
-    var cid = "";
+     form matches on the email instead.
+     --------------------------------------------------------------------- */
+
+  var FIELDS   = ["fname", "lname", "email", "phone"];
+  var frameBox = document.getElementById("payFrame");
+  var frameFt  = document.getElementById("frameFoot");
+  var mount    = document.getElementById("payment-element");
+  var mountErr = document.getElementById("mountErr");
+  var staleNote= document.getElementById("staleNote");
+  var loaded   = "";   /* the detail signature the frame was built from */
+
+  function val(id){ return (document.getElementById(id).value || "").trim(); }
+
+  function contactId(){
     try {
       var p = new URLSearchParams(window.location.search).get("c");
-      if (p && !/[{}]/.test(decodeURIComponent(p))) cid = p;
-      if (!cid){
-        var raw = sessionStorage.getItem("mbhAttendee") || localStorage.getItem("mbhAttendee") || "";
-        cid = (JSON.parse(raw || "{}") || {}).contact_id || "";
-      }
-    } catch (e) {}
-    if (cid) url += (url.indexOf("?") > -1 ? "&" : "?") + "contact_id=" + encodeURIComponent(cid);
-    window.location.href = url;
+      if (p && !/[{}]/.test(decodeURIComponent(p))) return p;
+      var raw = sessionStorage.getItem("mbhAttendee") || localStorage.getItem("mbhAttendee") || "";
+      return (JSON.parse(raw || "{}") || {}).contact_id || "";
+    } catch (e) { return ""; }
+  }
+
+  /* Carry the registration across so step 1 is not retyped either. Anything
+     already in a box wins: a customer correcting their email mid-funnel meant
+     to correct it. */
+  (function prefill(){
+    var a = {};
+    try {
+      var raw = sessionStorage.getItem("mbhAttendee") || localStorage.getItem("mbhAttendee") || "";
+      a = JSON.parse(raw || "{}") || {};
+    } catch (e) { a = {}; }
+    var q = null;
+    try { q = new URLSearchParams(window.location.search); } catch (e) {}
+    function pick(key, param){
+      return (q && (q.get(param) || "").trim()) || (a[key] || "").trim();
+    }
+    var map = [["fname","first_name","fn"], ["lname","last_name","ln"],
+               ["email","email","em"],      ["phone","phone","ph"]];
+    map.forEach(function(m){
+      var el = document.getElementById(m[0]);
+      if (el && !el.value) el.value = pick(m[1], m[2]);
+    });
+  })();
+
+  /* Email is checked properly because it is what the receipt and the login go
+     to, and what the payment form matches the contact on. */
+  function firstMissing(){
+    if (!val("fname")) return ["fname", "Please enter your first name."];
+    if (!val("lname")) return ["lname", "Please enter your last name."];
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val("email")))
+      return ["email", "Please enter a valid email address."];
+    if (val("phone").replace(/\D/g, "").length < 6)
+      return ["phone", "Please enter your mobile number."];
+    return null;
+  }
+
+  function signature(){
+    return FIELDS.map(val).join("\u0001");
+  }
+
+  function frameURL(){
+    var qs = [
+      "firstName=" + encodeURIComponent(val("fname")),
+      "lastName="  + encodeURIComponent(val("lname")),
+      "email="     + encodeURIComponent(val("email"))
+    ];
+    var cid = contactId();
+    if (cid) qs.push("contact_id=" + encodeURIComponent(cid));
+    return PAYMENT_LINK + (PAYMENT_LINK.indexOf("?") > -1 ? "&" : "?") + qs.join("&");
+  }
+
+  /* Build the frame fresh each time. Pointing an existing frame at a new src
+     leaves the old document up while the new one loads; replacing the node
+     keeps the loading state honest. */
+  function showFrame(scroll){
+    var url = frameURL();
+    loaded = signature();
+
+    frameBox.innerHTML =
+      '<div class="payframe__load" id="frameLoad">' +
+      '<span class="spin" aria-hidden="true"></span>Loading your secure payment form&hellip;</div>';
+
+    var f = document.createElement("iframe");
+    f.src = url;
+    f.title = "Secure payment form";
+    f.setAttribute("allow", "payment *; publickey-credentials-get *");
+    f.addEventListener("load", function(){
+      var l = document.getElementById("frameLoad");
+      if (l) l.remove();
+    });
+    frameBox.appendChild(f);
+
+    frameBox.hidden = false;
+    frameFt.hidden  = false;
+    staleNote.hidden = true;
+    mount.hidden = true;
+
+    /* If the frame is blocked (an extension, a strict browser, a bad link) the
+       fallback below it still gets them paid on the hosted page. */
+    var fb = document.getElementById("payFallback");
+    fb.href = url;
+
+    if (scroll !== false){
+      try { frameBox.scrollIntoView({behavior:"smooth", block:"start"}); } catch (e) {}
+    }
+  }
+
+  document.getElementById("buy").addEventListener("click", function(){
+    if (!PAYMENT_LINK) return;
+    var miss = firstMissing();
+    if (miss){
+      mountErr.textContent = miss[1];
+      mountErr.hidden = false;
+      var el = document.getElementById(miss[0]);
+      try { el.scrollIntoView({behavior:"smooth", block:"center"}); } catch (e) {}
+      el.focus({preventScroll:true});
+      return;
+    }
+    mountErr.hidden = true;
+    showFrame(true);
   });
+
+  document.getElementById("refreshFrame").addEventListener("click", function(){
+    showFrame(false);
+  });
+
+  /* A details edit after the frame is up is NOT reloaded automatically: the
+     reload would wipe a half-typed card. Offer the reload instead. */
+  FIELDS.forEach(function(id){
+    document.getElementById(id).addEventListener("input", function(){
+      if (!mountErr.hidden) mountErr.hidden = true;
+      if (frameBox.hidden) return;
+      staleNote.hidden = (signature() === loaded) || !!firstMissing();
+    });
+  });
+
+  /* An attendee arriving from the masterclass already has all four details, so
+     there is nothing to click: the form is there, filled in, on arrival. */
+  if (PAYMENT_LINK && !firstMissing()) showFrame(false);
 
   /* Testimonial video */
   var btn = document.getElementById("playBtn");
