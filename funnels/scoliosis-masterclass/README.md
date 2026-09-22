@@ -217,15 +217,19 @@ once the domain is live. It carries `noindex`.
   embedded, so the redirect after payment lands *inside* that iframe: without
   this the thank you page would render in a 1010px box, inside the checkout,
   with the old order summary still beside it.
-- Three next steps: check your email, book the welcome call, start week one.
+- Three next steps: check your email, book the 1:1 Welcome Call, start week one.
 - Greets them by first name when the funnel knows it, from storage or `?fn=`,
   and silently skips it when it does not. Written with `textContent`, because
   a name off the query string is not markup.
-- The calendar is a **placeholder** until `CALENDAR_URL` is set. Paste the
-  GoHighLevel calendar's embed URL there and the real calendar replaces the
-  placeholder block; GHL's `form_embed.js` is loaded with it so the iframe
-  sizes itself. The placeholder is deliberately drawn as an obvious gap, so
-  nobody mistakes an unfinished page for a finished one.
+- The booking calendar is the GoHighLevel one, embedded from `CALENDAR_URL`
+  at the top of the page's script (currently the `XRzk337QDvr7WL7ckbJX`
+  widget). GHL's `form_embed.js` loads with it so the iframe sizes itself to
+  its content; that resize works by messaging the iframe's `id`, so the `id`
+  set alongside the `src` has to be the one GHL's own embed code hands out for
+  that calendar. Change the calendar and both have to change together.
+- Clear `CALENDAR_URL` and the page falls back to a **placeholder** block,
+  deliberately drawn as an obvious gap rather than a pretty empty box, so an
+  unfinished page is never mistaken for a finished one.
 
 ## Page weight and mobile
 

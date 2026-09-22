@@ -208,7 +208,7 @@
 
       <div class="card">
         <div class="n">2</div>
-        <h3>Book your welcome call</h3>
+        <h3>Book your 1:1 Welcome Call</h3>
         <p>Pick a time below. It is a short call to get you set up, answer your questions, and point you at the right place to start for your curve.</p>
       </div>
 
@@ -231,7 +231,7 @@
   <div class="wrap">
     <div class="calhead">
       <p class="eyebrow">Step 2</p>
-      <h2>Book Your Welcome Call</h2>
+      <h2>Book Your 1:1 Welcome Call</h2>
       <p>Choose whichever time suits you. If nothing fits this week, book the closest one and we will move it &mdash; the important thing is that you are in the diary.</p>
     </div>
 
@@ -273,23 +273,21 @@
      CONFIGURE ME
 
      THE CALENDAR
-     Paste the GoHighLevel calendar's embed URL here and the calendar replaces
-     the placeholder on its own. It looks like:
-
-       https://api.leadconnectorhq.com/widget/booking/XXXXXXXXXXXXXXXXXXXX
-
-     or, on the white-label domain this account uses for its payment links,
-     the equivalent under link.fastpaydirect.com. Take it from the calendar's
-     own Embed dialog in GoHighLevel rather than typing it by hand: the id is
-     the whole thing, and a wrong character shows an empty calendar rather
-     than an error.
+     The GoHighLevel calendar's embed URL. Set, and the calendar renders in
+     place of the placeholder. To point this at a different calendar, take
+     the URL from that calendar's own Embed dialog in GoHighLevel rather than
+     typing it by hand -- the id is the whole thing, and a wrong character
+     shows an empty calendar rather than an error -- and change the iframe id
+     further down to match the one that dialog gives you, or the calendar
+     will render but never resize itself. Empty this string and the
+     placeholder comes back.
 
      WHERE THIS PAGE IS REACHED FROM
      Nothing links here. The payment link redirects to it on a successful
      payment, which is set on the GoHighLevel side, on the payment link
      itself, once the domain is live. Point it at this page's public URL.
      ========================================================================= */
-  var CALENDAR_URL = "";
+  var CALENDAR_URL = "https://api.leadconnectorhq.com/widget/booking/XRzk337QDvr7WL7ckbJX";
 
   /* ---------------------------------------------------------------------
      Break out of the checkout's frame.
@@ -356,8 +354,14 @@
 
     var f = document.createElement("iframe");
     f.src = CALENDAR_URL;
-    f.title = "Book your welcome call";
+    f.title = "Book your 1:1 Welcome Call";
     f.setAttribute("scrolling", "no");
+    f.setAttribute("allow", "payment");
+    /* form_embed.js resizes an iframe by matching the id it is messaged with
+       against the id on the element, so this has to be the id GoHighLevel's
+       own embed code hands out for this calendar, character for character.
+       Change the calendar, change this with it. */
+    f.id = "lx6cE2Fu6JN0wCZuQRbZ_1790098117673";
     box.appendChild(f);
 
     mount.appendChild(box);
