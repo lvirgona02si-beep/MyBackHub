@@ -24,6 +24,7 @@
     --f-body:"Source Sans 3","Source Sans Pro",system-ui,-apple-system,"Segoe UI",sans-serif;
   }
   *{box-sizing:border-box}
+  [hidden]{display:none !important}
   body{margin:0; background:var(--cream); color:var(--body); font-family:var(--f-body); font-size:17px; line-height:1.6; -webkit-font-smoothing:antialiased}
   h1,h2,h3,h4{font-family:var(--f-display); color:var(--ink); margin:0; text-wrap:balance; line-height:1.12; letter-spacing:-.018em}
   p{margin:0}
@@ -48,11 +49,20 @@
 
   /* ---------- Offer header ---------- */
   .offer{background:linear-gradient(176deg,var(--deep) 0%,var(--deep-2) 70%,#0D3C45 100%); color:#A9C4C8; padding-block:clamp(30px,4vw,46px) clamp(34px,4.4vw,52px); text-align:center}
+  /* "Masterclass price" and "This session only" used to be one string inside
+     the pill. On a narrow screen it wrapped, leaving "This session only"
+     stranded on a second line inside the bubble. The qualifier now sits under
+     the pill as its own line, so there is nothing left in there to wrap. */
   .offer .pill{
-    display:inline-flex; align-items:center; gap:8px; margin-bottom:15px;
+    display:inline-flex; align-items:center; gap:8px; margin-bottom:9px;
     background:rgba(255,95,82,.14); border:1px solid rgba(255,95,82,.45);
-    padding:7px 16px; border-radius:100px;
+    padding:7px 16px; border-radius:100px; white-space:nowrap;
     font-family:var(--f-display); font-size:11.5px; font-weight:800; letter-spacing:.15em; text-transform:uppercase; color:#FF9187;
+  }
+  .offer .pillsub{
+    margin-bottom:15px;
+    font-family:var(--f-display); font-size:11px; font-weight:700;
+    letter-spacing:.17em; text-transform:uppercase; color:#8FB4B9;
   }
   .offer .dot{width:8px; height:8px; border-radius:50%; background:var(--coral); animation:pulse 1.2s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -265,7 +275,8 @@
 <!-- ====================== OFFER HEADER ====================== -->
 <section class="offer">
   <div class="wrap">
-    <div class="pill"><span class="dot"></span> Masterclass price &middot; This session only</div>
+    <div class="pill"><span class="dot"></span> Masterclass price</div>
+    <div class="pillsub">This session only</div>
     <h1>Your Masterclass Price Is <em>Locked In</em></h1>
     <p class="sub">Six weeks of full access to The Scoliosis Solution&reg;, the program behind the three secrets you just saw, plus every bonus below.</p>
 
@@ -303,7 +314,7 @@
           <div class="panel__b">
 
             <!-- ---------- Order bump ---------- -->
-            <div class="bump">
+            <div class="bump" id="bumpBlock">
               <div class="bump__top">
                 <input type="checkbox" id="bump">
                 <div>
@@ -317,8 +328,8 @@
                  the processor's own hosted fields, which keeps card data out of
                  this page entirely and is what PCI requires. -->
             <div class="paymount" id="payment-element">
-              <div class="t">Card details load here</div>
-              <div class="d">Mount your Stripe Payment Element, or the GoHighLevel payment element, into <code>#payment-element</code>. Card data never touches this page.</div>
+              <div class="t">Card details on the next step</div>
+              <div class="d">The button below opens our secure payment page, where you enter your card. Card data never touches this page.</div>
               <div class="cards"><span>VISA</span><span>MASTERCARD</span><span>AMEX</span><span>DISCOVER</span><span>APPLE PAY</span><span>GOOGLE PAY</span></div>
             </div>
 
@@ -451,11 +462,31 @@
      ========================================================================= */
   var BASE_PRICE  = 99.00;      /* The Scoliosis Solution, masterclass price */
   var BUMP_PRICE  = 24.30;      /* Yoga and breathing, 10% off $27           */
+
+  /* The order bump is OFF.
+
+     The payment link is a hosted page carrying one fixed amount, and one link
+     cannot charge both $99.00 and $123.30. Showing the bump while the link can
+     only take the base price would mean someone ticks it, agrees to $123.30,
+     and is charged $99.00 for two products. Worse than not offering it.
+
+     To turn it back on, the bump has to exist on the GoHighLevel side first,
+     either as a native order bump on the payment link or as a second link for
+     the higher amount. Flip this only once that is true. */
+  var BUMP_ENABLED = false;
   var TOTAL_VALUE = 905.00;
 
   /* The live page contradicts itself: 14 days on the badge, 30 in the FAQ.
      One constant drives every mention here. Confirm which is correct. */
   var GUARANTEE_DAYS = 30;
+
+  /* The hosted payment page. Card details are collected there, never here,
+     which is what keeps this page out of PCI scope.
+
+     It carries ONE fixed amount, currently $99.00. If BASE_PRICE and this
+     link ever disagree, the link wins: it is what actually charges the card.
+     Change the price in GoHighLevel first, then here. */
+  var PAYMENT_LINK = "https://link.fastpaydirect.com/payment-link/6ab29ace9a013c156f1f975a";
 
   function money(n){
     return "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -471,18 +502,27 @@
      than reading the rendered text, so the charge can never drift from a
      formatting change. */
   function currentTotal(){
-    return BASE_PRICE + (bump.checked ? BUMP_PRICE : 0);
+    return BASE_PRICE + (BUMP_ENABLED && bump.checked ? BUMP_PRICE : 0);
   }
   window.currentTotal = currentTotal;
 
   function render(){
     var t = currentTotal();
-    bumpRow.hidden = !bump.checked;
+    bumpRow.hidden = !(BUMP_ENABLED && bump.checked);
     totalEl.textContent = money(t);
     subEl.textContent = money(t) + " · One payment";
     savedEl.textContent = "You save " + money(TOTAL_VALUE - t) + " today";
   }
   bump.addEventListener("change", render);
+
+  /* Hidden rather than deleted, so turning it back on is one word. The box is
+     cleared on the way: a browser restoring a checked state across a reload
+     must not put a hidden product into the total. */
+  if (!BUMP_ENABLED){
+    bump.checked = false;
+    var bumpBlock = document.getElementById("bumpBlock");
+    if (bumpBlock) bumpBlock.hidden = true;
+  }
   render();
 
   /* One constant drives every mention of the guarantee length. */
@@ -492,11 +532,31 @@
     el.textContent = String(GUARANTEE_DAYS);
   });
 
-  /* The button does not pretend to take a payment. Wire it to the processor. */
+  /* Hand off to the hosted payment page.
+
+     Same page, not a new tab: a payment is the end of this page's job, and a
+     second tab leaves the customer with two of them and no idea which one
+     completed.
+
+     contact_id rides along when the funnel knows it, so the purchase attaches
+     to the contact who watched the masterclass rather than creating a second
+     record. On a cold registration there is no id, because GoHighLevel mints
+     it server-side and never hands it back to the browser, so the payment
+     page matches on the email the customer types there instead. */
   document.getElementById("buy").addEventListener("click", function(){
-    console.log("[checkout] confirm payment for " + money(currentTotal()) +
-                " (bump " + (bump.checked ? "on" : "off") + ")");
-    /* TODO: stripe.confirmPayment({ elements, confirmParams: { ... } }) */
+    if (!PAYMENT_LINK) return;
+    var url = PAYMENT_LINK;
+    var cid = "";
+    try {
+      var p = new URLSearchParams(window.location.search).get("c");
+      if (p && !/[{}]/.test(decodeURIComponent(p))) cid = p;
+      if (!cid){
+        var raw = sessionStorage.getItem("mbhAttendee") || localStorage.getItem("mbhAttendee") || "";
+        cid = (JSON.parse(raw || "{}") || {}).contact_id || "";
+      }
+    } catch (e) {}
+    if (cid) url += (url.indexOf("?") > -1 ? "&" : "?") + "contact_id=" + encodeURIComponent(cid);
+    window.location.href = url;
   });
 
   /* Testimonial video */
